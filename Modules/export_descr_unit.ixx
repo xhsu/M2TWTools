@@ -6,17 +6,28 @@ module;
 
 #include <format>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <list>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <cstdio>
 
+#include <Windows.h>
+
 export module export_descr_unit;
 
+import UtlColor;
 import UtlLinearAlgebra;
 import UtlString;
 
+using namespace std::string_literals;
+using namespace std::string_view_literals;
+
+using std::list;
+using std::pair;
 using std::string;
 using std::vector;
 
@@ -43,6 +54,19 @@ struct soldier_t
 		for (auto& s : rgsz)
 			UTIL_Trim(s);
 
+		if (rgsz.size() != 4) [[unlikely]]
+		{
+			auto h = GetStdHandle(STD_OUTPUT_HANDLE);
+			SetConsoleTextAttribute(h, WINCON_TEXT_RED + WINCON_BG_BLACK);
+			std::cout << "[Error] String " << std::quoted("soldier\t"s + sz) << " has " << rgsz.size() << " argument(s).\n";
+			SetConsoleTextAttribute(h, WINCON_TEXT_GRAY + WINCON_BG_BLACK);
+			std::cout << "[Message] Attribute \"soldier\" expected to have 4 arguments.\n";
+			SetConsoleTextAttribute(h, WINCON_TEXT_WHITE + WINCON_BG_BLACK);
+			
+			if (rgsz.size() < 4)
+				return;
+		}
+
 		m_szModel = std::move(rgsz[0]);
 		m_iHumanCount = UTIL_StrToNum<int>(rgsz[1]);
 		m_iExtraCount = UTIL_StrToNum<int>(rgsz[2]);
@@ -65,6 +89,11 @@ struct soldier_t
 		m_iHumanCount = 0;
 		m_iExtraCount = 0;
 		m_flCollisionMass = 0;
+	}
+
+	bool Empty(void) const noexcept
+	{
+		return m_szModel.empty();
 	}
 };
 
@@ -92,7 +121,7 @@ struct mount_effect_t
 		vector<string> rgsz;
 		rgsz.reserve(2);
 
-		UTIL_Split(sz, rgsz, string(","));
+		UTIL_Split(sz, rgsz, ',');
 		for (auto& s : rgsz)
 			UTIL_Trim(s);
 
@@ -103,6 +132,9 @@ struct mount_effect_t
 
 	string ToString(uint8 iIndent = 2) const noexcept
 	{
+		if (Empty())
+			return "";	// optional field
+
 		string ret = "mount_effect";
 		for (; iIndent; --iIndent)
 			ret += '\t';
@@ -111,14 +143,17 @@ struct mount_effect_t
 		return ret;
 	}
 
-	static string ToString(const vector<mount_effect_t>& rg, uint8 iIndent = 1) noexcept
+	static string ToString(const vector<mount_effect_t>& rg, uint8 iIndent = 2) noexcept
 	{
+		if (Empty(rg))
+			return "";	// optional field
+
 		string ret = "mount_effect";
 		for (; iIndent; --iIndent)
 			ret += '\t';
 
-		for (const auto& obj : rg)
-			ret += std::format("{} {:+}, ", obj.m_szMount, obj.m_iEffect);
+		for (const auto& ins : rg)
+			ret += std::format("{} {:+}, ", ins.m_szMount, ins.m_iEffect);
 
 		// Remove the ", " at the end.
 		if (!rg.empty())
@@ -128,6 +163,20 @@ struct mount_effect_t
 		}
 
 		return ret;
+	}
+
+	bool Empty(void) const noexcept
+	{
+		return m_szMount.empty();
+	}
+
+	static bool Empty(const vector<mount_effect_t>& rg) noexcept
+	{
+		for (const auto& ins : rg)
+			if (ins.Empty())
+				return true;
+
+		return false;
 	}
 };
 
@@ -181,9 +230,14 @@ struct formation_t
 		m_iRanks = 0;
 		m_rgszFormations.clear();
 	}
+
+	bool Empty(void) const noexcept
+	{
+		return m_rgszFormations.empty();
+	}
 };
 
-struct wpn_stat_t
+template<StringLiteral STR> struct wpn_stat_t
 {
 	uint16 m_iDamage{ 0 };
 	uint16 m_iChargingBonus{ 0 };
@@ -194,10 +248,11 @@ struct wpn_stat_t
 	string m_szTechType{ "melee_simple" };
 	string m_szDamageType{ "blunt" };
 	string m_szHitSound{ "none" };
+	bool m_bMusketShotSet{ false };
 	float m_flMinAttakcInterval{ 25 };	// in 0.1s
-	int m_iSkeletonCompensationFactorInMelee{ 1 };	// Multiple weapons (?)
+	short m_iSkeletonCompensationFactorInMelee{ 1 };	// Multiple weapons (?)
 
-	template<StringLiteral STR> void Parse(string& sz) noexcept
+	void Parse(string& sz) noexcept
 	{
 		sz.erase(0, STR.length);
 		UTIL_Trim(sz);
@@ -209,6 +264,19 @@ struct wpn_stat_t
 		for (auto& s : rgsz)
 			UTIL_Trim(s);
 
+		if (rgsz.size() != 11 && rgsz.size() != 12) [[unlikely]]
+		{
+			auto h = GetStdHandle(STD_OUTPUT_HANDLE);
+			SetConsoleTextAttribute(h, WINCON_TEXT_RED + WINCON_BG_BLACK);
+			std::cout << "[Error] String " << std::quoted(STR.value + "\t"s + sz) << " has " << rgsz.size() << " argument(s).\n";
+			SetConsoleTextAttribute(h, WINCON_TEXT_GRAY + WINCON_BG_BLACK);
+			std::cout << "[Message] Attribute \"" << STR << "\" expected to have 11 arguments for regular troops, or 12 arguments for gunpowder units.\n";
+			SetConsoleTextAttribute(h, WINCON_TEXT_WHITE + WINCON_BG_BLACK);
+
+			if (rgsz.size() < 11)
+				return;
+		}
+
 		m_iDamage = UTIL_StrToNum<uint16>(rgsz[0]);
 		m_iChargingBonus = UTIL_StrToNum<uint16>(rgsz[1]);
 		m_szMissileType = std::move(rgsz[2]);
@@ -218,20 +286,40 @@ struct wpn_stat_t
 		m_szTechType = std::move(rgsz[6]);
 		m_szDamageType = std::move(rgsz[7]);
 		m_szHitSound = std::move(rgsz[8]);
-		m_flMinAttakcInterval = UTIL_StrToNum<float>(rgsz[9]);
-		m_iSkeletonCompensationFactorInMelee = UTIL_StrToNum<int>(rgsz[10]);
+		
+		if (rgsz.size() == 12) [[unlikely]]
+		{
+			m_bMusketShotSet = true;
+			m_flMinAttakcInterval = UTIL_StrToNum<float>(rgsz[10]);
+			m_iSkeletonCompensationFactorInMelee = UTIL_StrToNum<short>(rgsz[11]);
+		}
+		else [[likely]]
+		{
+			m_flMinAttakcInterval = UTIL_StrToNum<float>(rgsz[9]);
+			m_iSkeletonCompensationFactorInMelee = UTIL_StrToNum<short>(rgsz[10]);
+		}
 	}
 
-	template<StringLiteral STR> string ToString(uint8 iIndent = 3) const noexcept
+	string ToString(uint8 iIndent = 3) const noexcept
 	{
 		string ret = STR;
 		for (; iIndent; --iIndent)
 			ret += '\t';
 
-		ret += std::format("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
-			m_iDamage, m_iChargingBonus, m_szMissileType, m_flRange, m_iAmmunition,
-			m_szWeaponType, m_szTechType, m_szDamageType, m_szHitSound, m_flMinAttakcInterval,
-			m_iSkeletonCompensationFactorInMelee);
+		if (!m_bMusketShotSet) [[likely]]
+		{
+			ret += std::format("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
+				m_iDamage, m_iChargingBonus, m_szMissileType, m_flRange, m_iAmmunition,
+				m_szWeaponType, m_szTechType, m_szDamageType, m_szHitSound, m_flMinAttakcInterval,
+				m_iSkeletonCompensationFactorInMelee);
+		}
+		else [[unlikely]]
+		{
+			ret += std::format("{}, {}, {}, {}, {}, {}, {}, {}, {}, musket_shot_set, {}, {}",
+				m_iDamage, m_iChargingBonus, m_szMissileType, m_flRange, m_iAmmunition,
+				m_szWeaponType, m_szTechType, m_szDamageType, m_szHitSound, m_flMinAttakcInterval,
+				m_iSkeletonCompensationFactorInMelee);
+		}
 
 		return ret;
 	}
@@ -250,50 +338,69 @@ struct wpn_stat_t
 		m_flMinAttakcInterval = 25;
 		m_iSkeletonCompensationFactorInMelee = 1;
 	}
+
+	bool Empty(void) const noexcept
+	{
+		return !m_iDamage && !m_iChargingBonus &&
+			m_szMissileType == "no" && !m_flRange && !m_iAmmunition &&
+			m_szWeaponType == "no" && m_szTechType == "melee_simple" && m_szDamageType == "blunt" && m_szHitSound == "none";
+	}
 };
 
-struct wpn_stat_ex_t
+template<StringLiteral STR> struct wpn_stat_ex_t
 {
 	uint16 m_iAtkBonusVsMounted{ 0 };
 	uint16 m_iDefBonusVsMounted{ 0 };
 	uint16 m_iArmourPenetration{ 0 };
 
-	template<StringLiteral STR> void Parse(string& sz) noexcept
+	void Parse(string& sz) noexcept
 	{
 		sz.erase(0, STR.length);
 		UTIL_Trim(sz);
 
-		vector<string> rgsz;
-		rgsz.reserve(3);
+		auto lastPos = sz.find_first_not_of(',', 0);
+		auto pos = sz.find_first_of(',', lastPos);
+		uint16* p = (uint16*)this;
 
-		UTIL_Split(sz, rgsz, ',');
-		for (auto& s : rgsz)
-			UTIL_Trim(s);
-
-		m_iAtkBonusVsMounted = UTIL_StrToNum<uint16>(rgsz[0]);
-		m_iDefBonusVsMounted = UTIL_StrToNum<uint16>(rgsz[1]);
-		m_iArmourPenetration = UTIL_StrToNum<uint16>(rgsz[2]);
+		while (sz.npos != pos || sz.npos != lastPos)
+		{
+			*p++ = UTIL_StrToNum<uint16>(sz.substr(lastPos, pos - lastPos));
+			lastPos = sz.find_first_not_of(',', pos);
+			pos = sz.find_first_of(',', lastPos);
+		}
 	}
 
-	template<StringLiteral STR> string ToString(uint8 iIndent = 2) const noexcept
+	string ToString(uint8 iIndent = 2) const noexcept
 	{
 		string ret = STR;
 		for (; iIndent; --iIndent)
 			ret += '\t';
 
-		ret += std::format("{}, {}, {}", m_iAtkBonusVsMounted, m_iDefBonusVsMounted, m_iArmourPenetration);
+		[&] <size_t... I>(std::index_sequence<I...> seq)
+		{
+			ret += std::format(UTIL_SpaceCommaFormatter<seq.size()>(), *(uint16*)(size_t(this) + (I * sizeof(uint16)))...);
+		}
+		(std::make_index_sequence<3>{});
+
 		return ret;
 	}
 
 	void Clear(void) noexcept
 	{
-		m_iAtkBonusVsMounted = 0;
-		m_iDefBonusVsMounted = 0;
-		m_iArmourPenetration = 0;
+		memset(this, NULL, sizeof(wpn_stat_ex_t<STR>));
+	}
+
+	bool Empty(void) const noexcept
+	{
+		return[&] <size_t... I>(std::index_sequence<I...> seq) -> bool
+		{
+			return ((*(uint16*)(size_t(this) + (I * sizeof(uint16))) == 0) && ...);
+		}
+		(std::make_index_sequence<3>{});
 	}
 };
 
-export struct stat_pri_armour_t
+struct stat_pri_armour_t
 {
 	uint16 m_iArmor{ 0 };
 	uint16 m_iSkill{ 0 };
@@ -335,13 +442,57 @@ export struct stat_pri_armour_t
 		m_iShield = 0;
 		m_szHitSound = "flesh";
 	}
+
+	bool Empty(void) const noexcept
+	{
+		return !m_iArmor && !m_iShield && !m_iSkill && m_szHitSound == "flesh";
+	}
 };
 
 struct stat_sec_armour_t
 {
 	uint16 m_iArmor{ 0 };
 	uint16 m_iSkill{ 0 };
-	string m_szHitSound;
+	string m_szHitSound{ "flesh" };
+
+	void Parse(string& sz) noexcept
+	{
+		sz.erase(0, strlen_c("stat_sec_armour"));
+		UTIL_Trim(sz);
+
+		vector<string> rgsz;
+		rgsz.reserve(3);
+
+		UTIL_Split(sz, rgsz, ',');
+		for (auto& s : rgsz)
+			UTIL_Trim(s);
+
+		m_iArmor = UTIL_StrToNum<uint16>(rgsz[0]);
+		m_iSkill = UTIL_StrToNum<uint16>(rgsz[1]);
+		m_szHitSound = std::move(rgsz[2]);
+	}
+
+	string ToString(uint8 iIndent = 2) const noexcept
+	{
+		string ret = "stat_sec_armour";
+		for (; iIndent; --iIndent)
+			ret += '\t';
+
+		ret += std::format("{}, {}, {}", m_iArmor, m_iSkill, m_szHitSound);
+		return ret;
+	}
+
+	void Clear(void) noexcept
+	{
+		m_iArmor = 0;
+		m_iSkill = 0;
+		m_szHitSound = "flesh";
+	}
+
+	bool Empty(void) const noexcept
+	{
+		return !m_iArmor && !m_iSkill && m_szHitSound == "flesh";
+	}
 };
 
 struct stat_ground_t
@@ -350,19 +501,107 @@ struct stat_ground_t
 	short m_iSand{ 0 };
 	short m_iForest{ 0 };
 	short m_iSnow{ 0 };
+
+	void Parse(string& sz) noexcept
+	{
+		sz.erase(0, strlen_c("stat_ground"));
+		UTIL_Trim(sz);
+
+		vector<string> rgsz;
+		rgsz.reserve(4);
+
+		UTIL_Split(sz, rgsz, ',');
+		for (auto& s : rgsz)
+			UTIL_Trim(s);
+
+		m_iScrub = UTIL_StrToNum<short>(rgsz[0]);
+		m_iSand = UTIL_StrToNum<short>(rgsz[1]);
+		m_iForest = UTIL_StrToNum<short>(rgsz[2]);
+		m_iSnow = UTIL_StrToNum<short>(rgsz[3]);
+	}
+
+	string ToString(uint8 iIndent = 3) const noexcept
+	{
+		string ret = "stat_ground";
+		for (; iIndent; --iIndent)
+			ret += '\t';
+
+		ret += std::format("{}, {}, {}, {}", m_iScrub, m_iSand, m_iForest, m_iSnow);
+		return ret;
+	}
+
+	void Clear(void) noexcept
+	{
+		m_iScrub = 0;
+		m_iSand = 0;
+		m_iForest = 0;
+		m_iSnow = 0;
+	}
+
+	bool Empty(void) const noexcept
+	{
+		return !m_iForest && !m_iSand && !m_iScrub && !m_iSnow;
+	}
 };
 
 struct stat_mental_t
 {
 	short m_iMorale{ 0 };
-	string m_szDiscipline;
-	string m_szTraining;
+	string m_szDiscipline{ "normal" };
+	string m_szTraining{ "trained" };
 	bool m_bLockMorale{ false };
+
+	void Parse(string& sz) noexcept
+	{
+		sz.erase(0, strlen_c("stat_mental"));
+		UTIL_Trim(sz);
+
+		vector<string> rgsz;
+		rgsz.reserve(4);
+
+		UTIL_Split(sz, rgsz, ',');
+		for (auto& s : rgsz)
+			UTIL_Trim(s);
+
+		m_iMorale = UTIL_StrToNum<short>(rgsz[0]);
+		m_szDiscipline = std::move(rgsz[1]);
+		m_szTraining = std::move(rgsz[2]);
+
+		if (rgsz.size() > 3) [[unlikely]]	// This one is optional
+			m_bLockMorale = true;
+	}
+
+	string ToString(uint8 iIndent = 3) const noexcept
+	{
+		string ret = "stat_mental";
+		for (; iIndent; --iIndent)
+			ret += '\t';
+
+		if (m_bLockMorale) [[unlikely]]
+			ret += std::format("{}, {}, {}, lock_morale", m_iMorale, m_szDiscipline, m_szTraining);
+		else [[likely]]
+			ret += std::format("{}, {}, {}", m_iMorale, m_szDiscipline, m_szTraining);
+
+		return ret;
+	}
+
+	void Clear(void) noexcept
+	{
+		m_iMorale = 0;
+		m_szDiscipline = "normal";
+		m_szTraining = "trained";
+		m_bLockMorale = false;
+	}
+
+	bool Empty(void) const noexcept
+	{
+		return !m_iMorale && m_szDiscipline == "normal" && m_szTraining == "trained";
+	}
 };
 
 struct stat_cost_t
 {
-	uint16 m_iRecruitTurns{ 1 };
+	uint16 m_iRecruitTurns{ 0 };
 	uint16 m_iCost{ 0 };
 	uint16 m_iUpkeep{ 0 };
 	uint16 m_iUpgradingWpn{ 0 };
@@ -370,62 +609,337 @@ struct stat_cost_t
 	uint16 m_iCustomBattlesCost{ 0 };
 	uint16 m_iCustomBattlesPenaltyCount{ 0 };
 	uint16 m_iCustomBattlesPenaltyStacks{ 0 };
+
+	void Parse(string& sz) noexcept
+	{
+		sz.erase(0, strlen_c("stat_cost"));
+		UTIL_Trim(sz);
+
+		auto lastPos = sz.find_first_not_of(',', 0);
+		auto pos = sz.find_first_of(',', lastPos);
+		uint16* p = (uint16*)this;
+
+		while (sz.npos != pos || sz.npos != lastPos)
+		{
+			*p++ = UTIL_StrToNum<uint16>(sz.substr(lastPos, pos - lastPos));
+			lastPos = sz.find_first_not_of(',', pos);
+			pos = sz.find_first_of(',', lastPos);
+		}
+	}
+
+	string ToString(uint8 iIndent = 3) const noexcept
+	{
+		string ret = "stat_cost";
+		for (; iIndent; --iIndent)
+			ret += '\t';
+
+		[&] <size_t... I>(std::index_sequence<I...> seq)
+		{
+			ret += std::format(UTIL_SpaceCommaFormatter<seq.size()>(), *(uint16*)(size_t(this) + (I * sizeof(uint16)))...);
+		}
+		(std::make_index_sequence<8>{});
+
+		return ret;
+	}
+
+	void Clear(void) noexcept
+	{
+		memset(this, NULL, sizeof(stat_cost_t));
+	}
+
+	bool Empty(void) const noexcept
+	{
+		return [&] <size_t... I>(std::index_sequence<I...> seq) -> bool
+		{
+			return ((*(uint16*)(size_t(this) + (I * sizeof(uint16))) == 0) && ...);
+		}
+		(std::make_index_sequence<8>{});
+	}
 };
 
 export struct Unit_t
 {
 	// ; -- Data entries are as follows
-	string m_szType;
-	string m_szDictionary;
+	string					m_type;
+	string					m_dictionary;
 
 	//; --	Category and class define the rough type of the unit. They're used for setting some default attributes and for
 	//		determining where units go in formation amongst other things such as tags to support AI army formation
-	string m_szCategory;
-	string m_szClass;
-	string m_szVoiceType;
-	string m_szAccent;
-	string m_szBannerFaction;
-	string m_szBannerHoly;
-	soldier_t m_Soldier;
-	string m_szOfficer;
-	string m_szShip;
-	string m_szEngine;
-	string m_szAnimal;
-	string m_szMount;
-	vector<mount_effect_t> m_rgMountEffect;
-	vector<string> m_rgszAttributes;
-	formation_t m_Formation;
-	vector<unsigned> m_rgiHealth;
+	string					m_category;
+	string					m_class;
+	string					m_voice_type;
+	string					m_accent;
+	string					m_banner_faction;
+	string					m_banner_holy;
+	soldier_t				m_soldier;
+	string					m_officer;
+	string					m_ship;
+	string					m_engine;
+	string					m_animal;
+	string					m_mount;
+	vector<mount_effect_t>	m_mount_effect;
+	vector<string>			m_attributes;
+	formation_t				m_formation;
+	vector<uint16>			m_stat_health;	// Human health, animal health
 
 	// ; -- Details of unit's primary weapon. If the unit has a missile weapon it must be the primary
-	wpn_stat_t m_StatPri;
-	wpn_stat_ex_t m_StatPriEx;
-	vector<string> m_rgszStatPriAttr;
-	wpn_stat_t m_StatSec;
-	wpn_stat_ex_t m_StatSecEx;
-	vector<string> m_rgszStatSecAttr;
-	wpn_stat_t m_StatTer;
-	wpn_stat_ex_t m_StatTerEx;
-	vector<string> m_rgszStatTerAttr;
-	stat_pri_armour_t m_StatPriArmour;
-	stat_sec_armour_t m_StatSecArmour;
-	short m_iStatHeat{ 0 };
-	stat_ground_t m_StatGround;
-	int m_iStatChargeDist{ 0 };
-	float m_iStatFireDelay{ 0 };	// Type unknown #UNDONE
-	stat_cost_t m_StatCost;
-	uint16 m_iMinimalSoldiersToConsiderAlive{ 0 };	// stat_stl
-	vector<uint8> m_rgArmourUgLevels;
-	vector<string> m_rgszArmourUgModels;
-	vector<string> m_rgszOwnership;
-	vector<string> m_rgszEra0, m_rgszEra1, m_rgszEra2;
-	int m_iRecruitPriorityOffset{ 0 };
-	float m_flMoveSpeedMod{ 1.0f };
+	wpn_stat_t<"stat_pri">			m_stat_pri;
+	wpn_stat_ex_t<"stat_pri_ex">	m_stat_pri_ex;
+	vector<string>					m_stat_pri_attr;
+	wpn_stat_t<"stat_sec">			m_stat_sec;
+	wpn_stat_ex_t<"stat_sec_ex">	m_stat_sec_ex;
+	vector<string>					m_stat_sec_attr;
+	wpn_stat_t<"stat_ter">			m_stat_ter;
+	wpn_stat_ex_t<"stat_ter_ex">	m_stat_ter_ex;
+	vector<string>					m_stat_ter_attr;
+	stat_pri_armour_t		m_stat_pri_armour;
+	stat_sec_armour_t		m_stat_sec_armour;
+	short					m_stat_heat{ 0 };
+	stat_ground_t			m_stat_ground;
+	stat_mental_t			m_stat_mental;
+	int						m_stat_charge_dist{ 0 };
+	float					m_stat_fire_delay{ 0 };	// Type unknown #UNDONE
+	stat_cost_t				m_stat_cost;
+	uint16					m_stat_stl{ 0 };	// Number of soldiers needed for unit to count as alive
+	vector<uint16>			m_armour_ug_levels;
+	vector<string>			m_armour_ug_models;
+	vector<string>			m_ownership;
+	vector<string>			m_era_0, m_era_1, m_era_2;
+	int						m_recruit_priority_offset{ 0 };
+	float					m_move_speed_mod{ 0 };	// Although if you really want to have this value displayed, it should be 1.0f
+
+	void Parse(string& sz) noexcept
+	{
+#define PARSE_STRING(x)	else if (!strnicmp_c<#x>(sz.c_str()))	\
+						{										\
+							sz.erase(0, strlen_c(#x));			\
+							UTIL_Trim(sz);						\
+							m_##x = std::move(sz);				\
+						}
+
+#define PARSE_OBJECT(x)	else if (!strnicmp_c<#x>(sz.c_str()))	\
+						{										\
+							m_##x.Parse(sz);					\
+						}
+
+#define PARSE_VARY_STR(x)	else if (!strnicmp_c<#x>(sz.c_str()))	\
+							{										\
+								sz.erase(0, strlen_c(#x));			\
+								UTIL_Trim(sz);						\
+																	\
+								m_##x.clear();						\
+								UTIL_Split(sz, m_##x, ',');			\
+								for (auto& s : m_##x)				\
+									UTIL_Trim(s);					\
+							}
+
+#define PARSE_VARY_STR2(key, var)	else if (!strnicmp_c<key>(sz.c_str()))	\
+									{										\
+										sz.erase(0, strlen_c(key));			\
+										UTIL_Trim(sz);						\
+																			\
+										m_##var.clear();					\
+										UTIL_Split(sz, m_##var, ',');		\
+										for (auto& s : m_##var)				\
+											UTIL_Trim(s);					\
+									}
+
+#define PARSE_VARY_NUM(x)	else if (!strnicmp_c<#x>(sz.c_str()))	\
+							{										\
+								sz.erase(0, strlen_c(#x));			\
+								UTIL_Trim(sz);						\
+																	\
+								m_##x.clear();						\
+								UTIL_SplitIntoNums<decltype(m_##x)::value_type>(sz, m_##x, ',');\
+							}
+
+#define PARSE_NUMBER(x)	else if (!strnicmp_c<#x>(sz.c_str()))	\
+						{										\
+							sz.erase(0, strlen_c(#x));			\
+							UTIL_Trim(sz);						\
+																\
+							m_##x = UTIL_StrToNum<decltype(m_##x)>(sz);\
+						}
+
+		if (false) [[unlikely]]
+			return;
+
+		PARSE_STRING(type)
+		PARSE_STRING(dictionary)
+		PARSE_STRING(category)
+		PARSE_STRING(class)
+		PARSE_STRING(voice_type)
+		PARSE_STRING(accent)
+
+		else if (!strnicmp_c<"banner">(sz.c_str()))
+		{
+			sz.erase(0, strlen_c("banner"));
+			UTIL_Trim(sz);
+
+			if (!strnicmp_c<"faction">(sz.c_str()))
+			{
+				sz.erase(0, strlen_c("faction"));
+				UTIL_Trim(sz);
+
+				m_banner_faction = std::move(sz);
+			}
+			else if (!strnicmp_c<"holy">(sz.c_str()))
+			{
+				sz.erase(0, strlen_c("holy"));
+				UTIL_Trim(sz);
+
+				m_banner_holy = std::move(sz);
+			}
+			else
+			{
+				std::cout << "[Error] String " << std::quoted("banner "s + sz) << " cannot be prased.\n";
+			}
+		}
+
+		PARSE_OBJECT(soldier)
+		PARSE_STRING(officer)
+		PARSE_STRING(ship)
+		PARSE_STRING(engine)
+		PARSE_STRING(animal)
+
+		else if (!strnicmp_c<"mount_effect">(sz.c_str()))
+			mount_effect_t::Parse(m_mount_effect, sz);
+		PARSE_STRING(mount)
+
+		PARSE_VARY_STR(attributes)
+		PARSE_OBJECT(formation)
+		PARSE_VARY_NUM(stat_health)
+		PARSE_OBJECT(stat_pri_armour)
+		PARSE_OBJECT(stat_sec_armour)
+
+		PARSE_VARY_STR(stat_pri_attr)
+		PARSE_OBJECT(stat_pri_ex)
+		PARSE_OBJECT(stat_pri)
+		PARSE_VARY_STR(stat_sec_attr)
+		PARSE_OBJECT(stat_sec_ex)
+		PARSE_OBJECT(stat_sec)
+		PARSE_VARY_STR(stat_ter_attr)
+		PARSE_OBJECT(stat_ter_ex)
+		PARSE_OBJECT(stat_ter)
+
+		PARSE_NUMBER(stat_heat)
+		PARSE_OBJECT(stat_ground)
+		PARSE_OBJECT(stat_mental)
+		PARSE_NUMBER(stat_charge_dist)
+		PARSE_NUMBER(stat_fire_delay)
+
+		else if (!strnicmp_c<"stat_food">(sz.c_str()))
+			return;	// Obsolete
+
+		PARSE_OBJECT(stat_cost)
+		PARSE_NUMBER(stat_stl)
+		PARSE_VARY_NUM(armour_ug_levels)
+		PARSE_VARY_STR(armour_ug_models)
+		PARSE_VARY_STR(ownership)
+		PARSE_VARY_STR2("era 0", era_0)
+		PARSE_VARY_STR2("era 1", era_1)
+		PARSE_VARY_STR2("era 2", era_2)
+		PARSE_NUMBER(recruit_priority_offset)
+		PARSE_NUMBER(move_speed_mod)
+
+		else
+			std::cout << "[Error] String " << std::quoted(sz) << " cannot be parsed.\n";
+
+#undef PARSE_STRING
+#undef PARSE_OBJECT
+#undef PARSE_VARY_STR
+#undef PARSE_VARY_STR2
+#undef PARSE_VARY_NUM
+#undef PARSE_NUMBER
+	}
 };
+
+export auto operator<< (OStream auto& lhs, const Unit_t& rhs) noexcept -> decltype(lhs)&
+{
+	using namespace std;
+
+#define WRITE_STRING(x, indent, opt)	if (!rhs.m_##x.empty()) lhs << #x << UTIL_Indent<indent>() << rhs.m_##x << endl; else if (!opt) lhs << #x << UTIL_Indent<indent>() << "no" << endl
+#define WRITE_NUMBER(x, indent, opt)	if (rhs.m_##x != 0) lhs << #x << UTIL_Indent<indent>() << rhs.m_##x << endl; else if (!opt) lhs << #x << UTIL_Indent<indent>() << 0 << endl
+#define WRITE_STRING2(key, var, indent)	if (!rhs.m_##var.empty()) lhs << key << UTIL_Indent<indent>() << rhs.m_##var << endl	// Only used for banner field. And it's optional.
+#define WRITE_OBJECT(x, opt)			if (!opt || !rhs.m_##x.Empty()) lhs << rhs.m_##x.ToString() << endl
+#define WRITE_VAR_RNG(x, indent, opt)	if (!rhs.m_##x.empty())													\
+										{																		\
+											lhs << #x << UTIL_Indent<indent>();									\
+											for (auto it = rhs.m_##x.begin(); it != rhs.m_##x.end(); ++it)		\
+												lhs << *it << (distance(it, rhs.m_##x.end()) == 1 ? "" : ", ");	\
+											lhs << endl;														\
+										}																		\
+										else if (!opt)	/* #UNTESTED is this the default value? */				\
+											lhs << #x << UTIL_Indent<indent>() << "no" << endl
+#define WRITE_VAR_RNG2(key, var, indent)	if (!rhs.m_##var.empty())													\
+											{																			\
+												lhs << key << UTIL_Indent<indent>();									\
+												for (auto it = rhs.m_##var.begin(); it != rhs.m_##var.end(); ++it)		\
+													lhs << *it << (distance(it, rhs.m_##var.end()) == 1 ? "" : ", ");	\
+												lhs << endl;															\
+											}else
+
+	WRITE_STRING(type, 4, false);
+	WRITE_STRING(dictionary, 3, false);
+	WRITE_STRING(category, 3, false);
+	WRITE_STRING(class, 4, false);
+	WRITE_STRING(voice_type, 3, false);
+	WRITE_STRING(accent, 4, true);
+	WRITE_STRING2("banner faction", banner_faction, 2);
+	WRITE_STRING2("banner holy", banner_holy, 3);
+	WRITE_OBJECT(soldier, false);
+	WRITE_STRING(officer, 4, true);
+	WRITE_STRING(ship, 4, true);
+	WRITE_STRING(engine, 4, true);
+	WRITE_STRING(animal, 4, true);
+	WRITE_STRING(mount, 4, true);
+
+	if (!rhs.m_mount_effect.empty())
+		lhs << mount_effect_t::ToString(rhs.m_mount_effect) << endl;
+
+	WRITE_VAR_RNG(attributes, 3, false);
+	WRITE_OBJECT(formation, false);
+	WRITE_VAR_RNG(stat_health, 3, false);
+
+	WRITE_OBJECT(stat_pri, false);
+	WRITE_OBJECT(stat_pri_ex, true);
+	WRITE_VAR_RNG(stat_pri_attr, 2, false);
+	WRITE_OBJECT(stat_sec, false);
+	WRITE_OBJECT(stat_sec_ex, true);
+	WRITE_VAR_RNG(stat_sec_attr, 2, false);
+	WRITE_OBJECT(stat_ter, true);
+	WRITE_OBJECT(stat_ter_ex, true);
+	WRITE_VAR_RNG(stat_ter_attr, 2, true);
+
+	WRITE_OBJECT(stat_pri_armour, false);
+	WRITE_OBJECT(stat_sec_armour, false);
+	WRITE_NUMBER(stat_heat, 3, false);
+	WRITE_OBJECT(stat_ground, false);
+	WRITE_OBJECT(stat_mental, false);
+	WRITE_NUMBER(stat_charge_dist, 1, false);
+	WRITE_NUMBER(stat_fire_delay, 2, false);
+	lhs << "stat_food			60, 300" << endl;	// dummy.
+	WRITE_OBJECT(stat_cost, false);
+	WRITE_NUMBER(stat_stl, 3, true);
+	WRITE_VAR_RNG(armour_ug_levels, 1, false);
+	WRITE_VAR_RNG(armour_ug_models, 1, false);
+	WRITE_VAR_RNG(ownership, 3, false);
+	WRITE_VAR_RNG2("era 0", era_0, 4);
+	WRITE_VAR_RNG2("era 1", era_1, 4);
+	WRITE_VAR_RNG2("era 2", era_2, 4);
+	WRITE_NUMBER(recruit_priority_offset, 1, true);
+	WRITE_NUMBER(move_speed_mod, 2, true);
+
+#undef WRITE_STRING
+#undef WRITE_STRING2
+#undef WRITE_OBJECT
+
+	return lhs;
+}
 
 export struct edu_file_t
 {
-public:
+private:
 	long m_iSize = 0;
 	char* m_pszBuffer = nullptr;
 	char* m_pszCurPos = nullptr;
@@ -546,6 +1060,8 @@ public:
 	}
 
 public:
+	list<Unit_t> m_Units{};
+
 	edu_file_t(const char* pszFile = "export_descr_unit.txt") noexcept { Set(pszFile); }
 	virtual ~edu_file_t(void) noexcept { Reset(); }
 
@@ -569,29 +1085,32 @@ public:
 
 		Seek(0, SEEK_SET);
 	}
-
 	void Parse(void) noexcept
 	{
-	}
+		Unit_t* pCurrent = nullptr;
 
-	int Count(void) noexcept
-	{
-		int iCount = 0;
 		Seek(0, SEEK_SET);
-
-		for (char* p = m_pszCurPos; m_pszCurPos != m_pBufEnd; ++m_pszCurPos)
+		while (!Eof())
 		{
-			switch (*m_pszCurPos)
+			string sz = GetLine();
+			if (!sz.empty() && sz[0] == ';')	// Comment line.
+				continue;
+
+			if (auto pos = sz.find_first_of(';'); pos != sz.npos)	// Remove attached comment line.
+				sz.erase(pos, sz.npos);
+
+			if (!strnicmp_c<"type">(sz.c_str()))
 			{
-			case '\r':
-			case '\n':
-
-			default:
-				break;
+				m_Units.emplace_back();
+				pCurrent = &m_Units.back();
 			}
-		}
 
-		return iCount;
+			pCurrent->Parse(sz);
+		}
+	}
+	auto Count(void) noexcept
+	{
+		return m_Units.size();
 	}
 };
 

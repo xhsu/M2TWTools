@@ -1,5 +1,5 @@
 #include <iostream>
-#include <vector>
+#include <fstream>
 
 import battle_models;
 import export_descr_unit;
@@ -24,29 +24,36 @@ int main(int argc, char** argv)
 	file.Save("battle_models.modeldb");
 	*/
 
-	/*
-	edu_file_t file("export_descr_unit.txt");
+	edu_file_t file("ss6.4_edu.txt");
 	file.Initialize();
+	file.Parse();
 
-	std::cout << file.GetLine() << std::endl;
-	file.Skip(4);
+	//std::string s = "stat_pri_ex      4, 999, 1";
+	//wpn_stat_ex_t obj;
 
-	for (int i = 0; i < 10; i++)
+	//obj.Parse(s);
+
+	//std::cout << obj.ToString() << std::endl;
+
+	std::cout << file.Count() << " units presented in the file.\n\n";
+	std::cout << file.m_Units.front() << std::endl;
+	std::cout << *UTIL_GetRandomOne(file.m_Units) << std::endl;
+	for (const auto& ins : file.m_Units)
+		if (ins.m_stat_pri.m_bMusketShotSet)
+		{
+			std::cout << ins << std::endl;
+			break;
+		}
+	std::cout << file.m_Units.back() << std::endl;
+
+	if (std::ofstream of("output.txt"); of)
 	{
-		file.Skip(i);
-		file.Rewind(i);
-		std::cout << file.GetLine() << std::endl;
+		of << *UTIL_GetRandomOne(file.m_Units) << std::endl;
+		of << *UTIL_GetRandomOne(file.m_Units) << std::endl;
+		of << *UTIL_GetRandomOne(file.m_Units) << std::endl;
 
-		file.Rewind();
+		of.close();
 	}
-	*/
-
-	std::string s = "stat_pri_armour  6, 6, 6, metal";
-	stat_pri_armour_t obj;
-
-	obj.Parse(s);
-
-	std::cout << obj.ToString() << std::endl;
 
 	return EXIT_SUCCESS;
 }
