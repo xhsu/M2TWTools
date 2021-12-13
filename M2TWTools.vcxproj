@@ -165,6 +165,8 @@
     <ClCompile Include="..\Hydrogenium\UtlLinearAlgebra.ixx" />
     <ClCompile Include="..\Hydrogenium\UtlRandom.ixx" />
     <ClCompile Include="..\Hydrogenium\UtlString.ixx" />
+    <ClCompile Include="Modules\descr_mercenaries.ixx" />
+    <ClCompile Include="Modules\descr_regions.ixx" />
     <ClCompile Include="Modules\export_descr_unit.ixx" />
     <ClCompile Include="M2TWTools.cpp" />
     <ClCompile Include="Modules\battle_models.ixx" />

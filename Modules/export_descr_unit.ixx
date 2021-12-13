@@ -672,7 +672,7 @@ export struct Unit_t
 	string					m_banner_faction;
 	string					m_banner_holy;
 	soldier_t				m_soldier;
-	string					m_officer;
+	list<string>			m_officer;
 	string					m_ship;
 	string					m_engine;
 	string					m_animal;
@@ -797,7 +797,14 @@ export struct Unit_t
 		}
 
 		PARSE_OBJECT(soldier)
-		PARSE_STRING(officer)
+
+		else if (!strnicmp_c<"officer">(sz.c_str()))	// "officer" attribute is not separated by comma, but new line.
+		{
+			sz.erase(0, strlen_c("officer"));
+			UTIL_Trim(sz);
+			m_officer.emplace_back(std::move(sz));
+		}
+
 		PARSE_STRING(ship)
 		PARSE_STRING(engine)
 		PARSE_STRING(animal)
@@ -888,7 +895,11 @@ export auto operator<< (OStream auto& lhs, const Unit_t& rhs) noexcept -> declty
 	WRITE_STRING2("banner faction", banner_faction, 2);
 	WRITE_STRING2("banner holy", banner_holy, 3);
 	WRITE_OBJECT(soldier, false);
-	WRITE_STRING(officer, 4, true);
+
+	if (!rhs.m_officer.empty())
+		for (const auto& ins : rhs.m_officer)
+			lhs << "officer" << UTIL_Indent<4>() << ins << endl;
+
 	WRITE_STRING(ship, 4, true);
 	WRITE_STRING(engine, 4, true);
 	WRITE_STRING(animal, 4, true);
@@ -1062,7 +1073,7 @@ private:
 public:
 	list<Unit_t> m_Units{};
 
-	edu_file_t(const char* pszFile = "export_descr_unit.txt") noexcept { Set(pszFile); }
+	explicit edu_file_t(const char* pszFile = "export_descr_unit.txt") noexcept { Set(pszFile); }
 	virtual ~edu_file_t(void) noexcept { Reset(); }
 
 	void Initialize(void) noexcept

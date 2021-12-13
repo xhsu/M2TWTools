@@ -1,10 +1,195 @@
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <list>
+#include <cassert>
 
-import battle_models;
-import export_descr_unit;
 import UtlRandom;
 import UtlString;
+import battle_models;
+import descr_mercenaries;
+import descr_regions;
+import export_descr_unit;
+
+void CompleteSettlement(void) noexcept
+{
+	descr_regions_t file;
+	std::list<std::string> rgExists;
+
+	if (std::ifstream f("descr_strat.txt"); f)
+	{
+		bool bInside = false;
+		while (!f.eof())
+		{
+			std::string sz;
+			std::getline(f, sz);
+
+			UTIL_Trim(sz);
+
+			if (auto pos = sz.find_first_of(';'); pos != sz.npos)
+				sz.erase(pos);
+
+			if (!bInside && sz.starts_with("settlement"))
+			{
+				std::getline(f, sz);
+				UTIL_Trim(sz);
+
+				if (!sz.empty() && sz[0] == '{')
+					bInside = true;
+
+				continue;
+			}
+			else if (bInside && sz.starts_with('}'))
+			{
+				bInside = false;
+				continue;
+			}
+
+			if (bInside && sz.starts_with("region "))
+				rgExists.emplace_back(sz.substr(strlen_c("region ")));
+		}
+
+		f.close();
+	}
+
+	if (std::ofstream f("output.txt"); f)
+	{
+		for (const auto& ins : file.m_Regions)
+		{
+			if (std::find(rgExists.begin(), rgExists.end(), ins.Get<Region_t::m_szProvincialName>()) != rgExists.end())
+				continue;
+
+			f <<
+				"settlement\n"
+				"{\n"
+				"\tlevel village\n"
+				"\tregion " << ins.Get<Region_t::m_szProvincialName>() << '\n' <<
+				"\t\n"
+				"\tyear_founded 0\n"
+				"\tpopulation 400\n"
+				"\tplan_set default_set\n"
+				"\tfaction_creator " << ins.Get<Region_t::m_szCityBuilder>() << '\n' <<
+				"}\n"
+				<< std::endl;
+		}
+
+		f.close();
+	}
+}
+
+void CheckUnitPresence(void) noexcept
+{
+	std::list<std::string> rgValidTraits;
+	if (std::ifstream f("export_descr_character_traits.txt"); f)
+	{
+		while (!f.eof())
+		{
+			std::string sz;
+			std::getline(f, sz);
+
+			if (auto pos = sz.find_first_of(';'); pos != sz.npos)
+				sz.erase(pos);
+
+			UTIL_Trim(sz);
+			if (sz.empty())
+				continue;
+
+			if (!sz.starts_with("Trait "))
+				continue;
+
+			sz.erase(0, strlen_c("Trait "));
+			rgValidTraits.emplace_back(std::move(sz));
+		}
+
+		f.close();
+	}
+
+	if (std::ifstream f("descr_strat.txt"); f)
+	{
+		size_t iLine = 0;
+
+		while (!f.eof())
+		{
+			++iLine;
+
+			std::string sz;
+			std::getline(f, sz);
+
+			if (auto pos = sz.find_first_of(';'); pos != sz.npos)
+				sz.erase(pos);
+
+			UTIL_Trim(sz);
+			if (sz.empty())
+				continue;
+
+			if (!sz.starts_with("traits "))
+				continue;
+
+			sz.erase(0, strlen_c("traits "));
+
+			std::list<std::string> rgsz;
+			std::list<std::pair<std::string, short>> rgTraits;
+
+			UTIL_Split(sz, rgsz, ',');
+			for (auto& s : rgsz)
+			{
+				UTIL_Trim(s);
+
+				auto breakpos = s.find_first_of(' ');
+				assert(breakpos != s.npos);
+
+				rgTraits.emplace_back(std::make_pair(s.substr(0, breakpos), UTIL_StrToNum<short>(s.substr(breakpos))));
+			}
+
+			assert(!rgTraits.empty());
+
+			for (const auto& [szTrait, iLevel] : rgTraits)
+				if (std::find(rgValidTraits.begin(), rgValidTraits.end(), szTrait) == rgValidTraits.end())
+					std::cout << "Trait \"" << szTrait << "\" no found in line " << iLine << std::endl;
+		}
+
+		f.close();
+	}
+}
+
+void ValidateUnitsForDesrcStart(void) noexcept
+{
+	edu_file_t f_edu("vanilla_edu.txt");
+	f_edu.Initialize();
+	f_edu.Parse();
+
+	if (std::ifstream f("descr_strat.txt"); f)
+	{
+		size_t iLine = 0;
+
+		while (!f.eof())
+		{
+			++iLine;
+
+			std::string sz;
+			std::getline(f, sz);
+
+			if (auto pos = sz.find_first_of(';'); pos != sz.npos)
+				sz.erase(pos);
+
+			UTIL_Trim(sz);
+			if (sz.empty())
+				continue;
+
+			if (!sz.starts_with("unit"))
+				continue;
+
+			sz.erase(0, 5);
+			auto pos = sz.find("exp");
+			sz.erase(pos);
+			UTIL_Trim(sz);
+
+			if (std::find_if(f_edu.m_Units.begin(), f_edu.m_Units.end(), [&](const Unit_t& ins) { return ins.m_type == sz; }) == f_edu.m_Units.end())
+				std::cout << "Unit \"" << sz << "\" no found at line " << iLine << std::endl;
+		}
+	}
+}
 
 int main(int argc, char** argv)
 {
@@ -24,35 +209,35 @@ int main(int argc, char** argv)
 	file.Save("battle_models.modeldb");
 	*/
 
-	edu_file_t file("ss6.4_edu.txt");
-	file.Initialize();
-	file.Parse();
+	descr_mercenaries_t f;
+	std::cout << f.m_Pools.front() << std::endl;
+	std::cout << *UTIL_GetRandomOne(f.m_Pools) << std::endl;
+	std::cout << f.m_Pools.back() << std::endl;
 
-	//std::string s = "stat_pri_ex      4, 999, 1";
-	//wpn_stat_ex_t obj;
+	edu_file_t f_edu("vanilla_edu.txt");
+	f_edu.Initialize();
+	f_edu.Parse();
 
-	//obj.Parse(s);
-
-	//std::cout << obj.ToString() << std::endl;
-
-	std::cout << file.Count() << " units presented in the file.\n\n";
-	std::cout << file.m_Units.front() << std::endl;
-	std::cout << *UTIL_GetRandomOne(file.m_Units) << std::endl;
-	for (const auto& ins : file.m_Units)
-		if (ins.m_stat_pri.m_bMusketShotSet)
-		{
-			std::cout << ins << std::endl;
-			break;
-		}
-	std::cout << file.m_Units.back() << std::endl;
-
-	if (std::ofstream of("output.txt"); of)
+	for (auto& Pool : f.m_Pools)
 	{
-		of << *UTIL_GetRandomOne(file.m_Units) << std::endl;
-		of << *UTIL_GetRandomOne(file.m_Units) << std::endl;
-		of << *UTIL_GetRandomOne(file.m_Units) << std::endl;
+		for (auto it = Pool.m_rgMercenaries.begin(); it != Pool.m_rgMercenaries.end(); /* Do nothing */)
+		{
+			if (std::find_if(f_edu.m_Units.begin(), f_edu.m_Units.end(), [&](const Unit_t& Unit) { return it->m_szUnit == Unit.m_type; }) == f_edu.m_Units.end())
+			{
+				std::cout << "Unknown unit \"" << it->m_szUnit << "\" in pool \"" << Pool.m_szName << '"' << std::endl;
+				it = Pool.m_rgMercenaries.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+	}
 
-		of.close();
+	if (std::ofstream fout("output.txt"); fout)
+	{
+		fout << f;
+		fout.close();
 	}
 
 	return EXIT_SUCCESS;

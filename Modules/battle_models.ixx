@@ -333,7 +333,7 @@ public:
 	size_t m_iTotalModels = 0;
 	vector<BattleModel_t> m_rgBattleModels{};
 
-	modeldb_file_t(const char* pszFilePath) noexcept { Set(pszFilePath); }
+	explicit modeldb_file_t(const char* pszFilePath) noexcept { Set(pszFilePath); }
 	virtual ~modeldb_file_t(void) noexcept { Reset(); }
 
 	void Initialize(void) noexcept

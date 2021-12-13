@@ -57,6 +57,12 @@
     <ClCompile Include="..\Hydrogenium\UtlRandom.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Modules\descr_regions.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Modules\descr_mercenaries.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Hydrogenium\ScopedEnumOperator.hpp">
