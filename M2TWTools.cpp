@@ -3,7 +3,10 @@
 #include <string>
 #include <algorithm>
 #include <list>
+
 #include <cassert>
+
+#include "tinyxml2/tinyxml2.h"
 
 import UtlRandom;
 import UtlString;
@@ -11,6 +14,9 @@ import battle_models;
 import descr_mercenaries;
 import descr_regions;
 import export_descr_unit;
+import ui_xmls;
+
+using namespace tinyxml2;
 
 void CompleteSettlement(void) noexcept
 {
@@ -191,24 +197,8 @@ void ValidateUnitsForDesrcStart(void) noexcept
 	}
 }
 
-int main(int argc, char** argv)
+void DelNonexistUnitForDesrcMercs(void) noexcept
 {
-	/*
-	modeldb_file_t file("battle_models.modeldb");
-	//modeldb_file_t file("battle_models_long_lod.modeldb");
-	//modeldb_file_t file("test.modeldb");
-
-	file.Initialize();
-	std::cout << "Total models: " << file.m_iTotalModels << std::endl;
-	std::cout << "======================================================\n";
-	std::cout << *UTIL_GetRandomOne(file.m_rgBattleModels) << std::endl;
-	std::cout << "======================================================\n";
-	std::cout << file.m_rgBattleModels.back();
-
-	//file.Save("output_test.modeldb");
-	file.Save("battle_models.modeldb");
-	*/
-
 	descr_mercenaries_t f;
 	std::cout << f.m_Pools.front() << std::endl;
 	std::cout << *UTIL_GetRandomOne(f.m_Pools) << std::endl;
@@ -239,6 +229,66 @@ int main(int argc, char** argv)
 		fout << f;
 		fout.close();
 	}
+}
+
+void RemoveFaction(modeldb_file_t& f, const std::string& szFaction)
+{
+	size_t i = 0;
+	for (auto itBM = f.m_rgBattleModels.begin(); itBM != f.m_rgBattleModels.end(); /* Do Nothing*/)
+	{
+		bool bAmericaUnit = itBM->m_UnitTex.size() <= 2 && itBM->m_UnitTex.contains(szFaction) && itBM->m_AttachmentTex.size() <= 2 && itBM->m_AttachmentTex.contains(szFaction);
+
+		if (!bAmericaUnit)
+		{
+			for (auto it = itBM->m_UnitTex.begin(); it != itBM->m_UnitTex.end(); /* Do Nothing */)
+			{
+				if (it->first == szFaction)
+					it = itBM->m_UnitTex.erase(it);
+				else
+					++it;
+			}
+
+			for (auto it = itBM->m_AttachmentTex.begin(); it != itBM->m_AttachmentTex.end(); /* Do Nothing */)
+			{
+				if (it->first == szFaction)
+					it = itBM->m_AttachmentTex.erase(it);
+				else
+					++it;
+			}
+		}
+
+		if (itBM->m_szName.find("mount_") == std::string::npos && (bAmericaUnit || itBM->m_UnitTex.empty() || itBM->m_AttachmentTex.empty()))
+		{
+			++i;
+			std::cout << "Removing entry \"" << itBM->m_szName << "\".\n";
+			itBM = f.m_rgBattleModels.erase(itBM);
+		}
+		else
+			++itBM;
+	}
+
+	std::cout << i << " entry(ies) was(were) removed for " << szFaction << '\n';
+}
+
+int main(int argc, char** argv)
+{
+	/*
+	modeldb_file_t file("battle_models.modeldb");
+	//modeldb_file_t file("battle_models_long_lod.modeldb");
+	//modeldb_file_t file("test.modeldb");
+
+	file.Initialize();
+	std::cout << "Total models: " << file.m_iTotalModels << std::endl;
+	std::cout << "======================================================\n";
+	std::cout << *UTIL_GetRandomOne(file.m_rgBattleModels) << std::endl;
+	std::cout << "======================================================\n";
+	std::cout << file.m_rgBattleModels.back();
+
+	//file.Save("output_test.modeldb");
+	file.Save("battle_models.modeldb");
+	*/
+
+	FixUIXML("shared.sd.xml");
 
 	return EXIT_SUCCESS;
 }

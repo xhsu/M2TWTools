@@ -7,6 +7,7 @@ module;
 #include <fstream>	// std::ofstream
 #include <iomanip>	// std::quoted
 #include <iostream>	// std::cout
+#include <list>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,6 +18,7 @@ module;
 
 export module battle_models;
 
+using std::list;
 using std::string;
 using std::unordered_map;
 using std::vector;
@@ -48,17 +50,17 @@ struct Mount_t
 struct Stance_t
 {
 	Mount_t m_Mount{};
-	vector<string> m_rgszPrim{};
-	vector<string> m_rgszSec{};
+	list<string> m_rgszPrim{};
+	list<string> m_rgszSec{};
 };
 
 export struct BattleModel_t
 {
 	string m_szName{ "" };
-	vector<vector<Mesh_t>> m_rgrgMeshGroup{};
+	list<list<Mesh_t>> m_rgrgMeshGroup{};
 	unordered_map<string, Texture_t> m_UnitTex{};
 	unordered_map<string, Texture_t> m_AttachmentTex{};
-	vector<Stance_t> m_rgStances{};
+	list<Stance_t> m_rgStances{};
 	int m_iMysteryNum{ 0 };
 	Vector m_MysteryVector1;
 	Vector m_MysteryVector2;
@@ -333,7 +335,7 @@ public:
 	size_t m_iTotalModels = 0;
 	vector<BattleModel_t> m_rgBattleModels{};
 
-	explicit modeldb_file_t(const char* pszFilePath) noexcept { Set(pszFilePath); }
+	explicit modeldb_file_t(const char* pszFilePath = "battle_models.modeldb") noexcept { Set(pszFilePath); }
 	virtual ~modeldb_file_t(void) noexcept { Reset(); }
 
 	void Initialize(void) noexcept
@@ -395,7 +397,7 @@ public:
 			BattleModel.m_rgrgMeshGroup.resize(1);	// For the "mount_pony", always be one.
 			Skip(3);
 
-			auto& rgMeshGroup = BattleModel.m_rgrgMeshGroup[0];
+			auto& rgMeshGroup = BattleModel.m_rgrgMeshGroup.front();
 			rgMeshGroup.resize(UTIL_StrToNum<size_t>(ParseBySpace()));
 			Skip(2);
 
