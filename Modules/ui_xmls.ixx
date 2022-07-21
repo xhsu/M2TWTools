@@ -5,14 +5,12 @@ module;
 
 #include <cstring>
 
-#include <Windows.h>
-
 #include "tinyxml2/tinyxml2.h"
 
 export module ui_xmls;
 
-import UtlColor;
 import UtlString;
+import UtlWinConsole;
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -24,21 +22,21 @@ export bool CheckUIXML(const char* pszFile) noexcept
 	tinyxml2::XMLDocument xml;
 	if (xml.LoadFile(pszFile) != tinyxml2::XML_SUCCESS) [[unlikely]]
 	{
-		std::cout << "Fail on loading file \"" << pszFile << "\".\n";
+		cout_w() << "Fail on loading file \"" << pszFile << "\".\n";
 		return false;
 	}
 
 	auto pRoot = xml.FirstChildElement("root");
 	if (!pRoot) [[unlikely]]
 	{
-		std::cout << "Node 'root' no found in file.\n";
+		cout_w() << "Node 'root' no found in file.\n";
 		return false;
 	}
 
 	auto pTexPages = pRoot->FirstChildElement("texture_pages");
 	if (!pTexPages) [[unlikely]]
 	{
-		std::cout << "Node 'texture_pages' no found under the node 'root'.\n";
+		cout_w() << "Node 'texture_pages' no found under the node 'root'.\n";
 		return false;
 	}
 
@@ -49,7 +47,7 @@ export bool CheckUIXML(const char* pszFile) noexcept
 
 		if (p->QueryStringAttribute("file", &psz) != tinyxml2::XML_SUCCESS) [[unlikely]]
 		{
-			std::cout << "Attribute 'file' no found in entry '" << p->Value() << "' at index " << i << ".\n";
+			cout_w() << "Attribute 'file' no found in entry '" << p->Value() << "' at index " << i << ".\n";
 			return false;
 		}
 
@@ -58,14 +56,14 @@ export bool CheckUIXML(const char* pszFile) noexcept
 
 	if (size_t iCount = pTexPages->UnsignedAttribute("count"); i != iCount)	[[unlikely]]
 	{
-		std::cout << "The 'count' attribute of node 'texture_pages' expected to be " << i << ", but " << iCount << " found.\n";
+		cout_w() << "The 'count' attribute of node 'texture_pages' expected to be " << i << ", but " << iCount << " found.\n";
 		return false;
 	}
 
 	auto pSprites = pRoot->FirstChildElement("sprites");
 	if (!pSprites) [[unlikely]]
 	{
-		std::cout << "Node 'sprites' no found under the node 'root'.\n";
+		cout_w() << "Node 'sprites' no found under the node 'root'.\n";
 		return false;
 	}
 
@@ -77,7 +75,7 @@ export bool CheckUIXML(const char* pszFile) noexcept
 			const char* psz = nullptr;
 			p->QueryStringAttribute("name", &psz);
 
-			std::cout << "The 'index' attribute of node 'sprite'(named: \"" << psz << "\") expected to be " << i << ", but " << iIndex << " found.\n";
+			cout_w() << "The 'index' attribute of node 'sprite'(named: \"" << psz << "\") expected to be " << i << ", but " << iIndex << " found.\n";
 			return false;
 		}
 
@@ -86,7 +84,7 @@ export bool CheckUIXML(const char* pszFile) noexcept
 
 	if (size_t iCount = pSprites->UnsignedAttribute("count"); i != iCount) [[unlikely]]
 	{
-		std::cout << "The 'count' attribute of node 'sprites' expected to be " << i << ", but " << iCount << " found.\n";
+		cout_w() << "The 'count' attribute of node 'sprites' expected to be " << i << ", but " << iCount << " found.\n";
 		return false;
 	}
 
@@ -100,21 +98,21 @@ export void FixUIXML(const char* pszFile) noexcept
 	tinyxml2::XMLDocument xml;
 	if (xml.LoadFile(pszFile) != tinyxml2::XML_SUCCESS) [[unlikely]]
 	{
-		std::cout << "File damaged beyond mendable: File \"" << pszFile << "\" doesn't exists.\n";
+		cout_w() << "File damaged beyond mendable: File \"" << pszFile << "\" doesn't exists.\n";
 		return;
 	}
 
 	auto pRoot = xml.FirstChildElement("root");
 	if (!pRoot) [[unlikely]]
 	{
-		std::cout << "File damaged beyond mendable: Node 'root' no found in file.\n";
+		cout_w() << "File damaged beyond mendable: Node 'root' no found in file.\n";
 		return;
 	}
 
 	auto pTexPages = pRoot->FirstChildElement("texture_pages");
 	if (!pTexPages) [[unlikely]]
 	{
-		std::cout << "File damaged beyond mendable: Node 'texture_pages' no found under the node 'root'.\n";
+		cout_w() << "File damaged beyond mendable: Node 'texture_pages' no found under the node 'root'.\n";
 		return;
 	}
 
@@ -126,7 +124,7 @@ export void FixUIXML(const char* pszFile) noexcept
 
 	if (size_t iCount = pTexPages->UnsignedAttribute("count"); i != iCount) [[unlikely]]
 	{
-		std::cout << "Mending: 'count' attribute mismatched under node 'texture_pages'. Value changed to " << i << " from " << iCount << ".\n";
+		cout_w() << "Mending: 'count' attribute mismatched under node 'texture_pages'. Value changed to " << i << " from " << iCount << ".\n";
 		pTexPages->SetAttribute("count", i);
 		bShouldSave = true;
 	}
@@ -134,7 +132,7 @@ export void FixUIXML(const char* pszFile) noexcept
 	auto pSprites = pRoot->FirstChildElement("sprites");
 	if (!pSprites) [[unlikely]]
 	{
-		std::cout << "File damaged beyond mendable: Node 'sprites' no found under the node 'root'.\n";
+		cout_w() << "File damaged beyond mendable: Node 'sprites' no found under the node 'root'.\n";
 		return;
 	}
 
@@ -146,7 +144,7 @@ export void FixUIXML(const char* pszFile) noexcept
 			const char* psz = nullptr;
 			p->QueryStringAttribute("name", &psz);
 
-			std::cout << "Mending: 'index' attribute of node 'sprite'(named: \"" << psz << "\") changed to " << i << " from " << iIndex << ".\n";
+			cout_w() << "Mending: 'index' attribute of node 'sprite'(named: \"" << psz << "\") changed to " << i << " from " << iIndex << ".\n";
 			p->SetAttribute("index", i);
 			bShouldSave = true;
 		}
@@ -156,13 +154,10 @@ export void FixUIXML(const char* pszFile) noexcept
 
 	if (size_t iCount = pSprites->UnsignedAttribute("count"); i != iCount) [[unlikely]]
 	{
-		std::cout << "Mending: 'count' attribute mismatched under node 'sprites'. Value changed to " << i << " from " << iCount << ".\n";
+		cout_w() << "Mending: 'count' attribute mismatched under node 'sprites'. Value changed to " << i << " from " << iCount << ".\n";
 		pSprites->SetAttribute("count", i);
 		bShouldSave = true;
 	}
-
-	auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	SetConsoleTextAttribute(hConsole, WINCON_TEXT_GREEN + WINCON_BG_BLACK);
 
 	if (bShouldSave)
 	{
@@ -177,15 +172,13 @@ export void FixUIXML(const char* pszFile) noexcept
 
 		pOutpath[len] = '\0';
 
-		std::cout << "Mended file saved as: " << pOutpath << '\n';
+		cout_lime() << "Mended file saved as: " << pOutpath << '\n';
 		xml.SaveFile(pOutpath);
 
 		delete[] pOutpath;
 	}
 	else
 	{
-		std::cout << "File \"" << pszFile << "\" checks out.\n";
+		cout_lime() << "File \"" << pszFile << "\" checks out.\n";
 	}
-
-	SetConsoleTextAttribute(hConsole, WINCON_TEXT_WHITE + WINCON_BG_BLACK);
 }

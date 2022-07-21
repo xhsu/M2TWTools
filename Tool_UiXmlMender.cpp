@@ -7,6 +7,7 @@
 
 #include <cstring>
 
+import UtlWinConsole;
 import ui_xmls;
 
 namespace fs = std::filesystem;
@@ -27,7 +28,7 @@ int main(int argc, char** argv)
 
 			if (!_stricmp(".xml", Path.extension().string().c_str()))
 			{
-				std::cout << "Scanning file: " << Entry.path().string() << '\n';
+				cout_w() << "Scanning file: " << Entry.path().string() << '\n';
 				FixUIXML(Entry.path().string().c_str());
 			}
 		}
@@ -37,6 +38,7 @@ int main(int argc, char** argv)
 		FixUIXML(argv[1]);
 	}
 
+	cout_w();
 	system("pause");
 	return EXIT_SUCCESS;
 }

@@ -15,13 +15,11 @@ module;
 
 #include <cstdio>
 
-#include <Windows.h>
-
 export module export_descr_unit;
 
-import UtlColor;
 import UtlLinearAlgebra;
 import UtlString;
+import UtlWinConsole;
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -56,12 +54,8 @@ struct soldier_t
 
 		if (rgsz.size() != 4) [[unlikely]]
 		{
-			auto h = GetStdHandle(STD_OUTPUT_HANDLE);
-			SetConsoleTextAttribute(h, WINCON_TEXT_RED + WINCON_BG_BLACK);
-			std::cout << "[Error] String " << std::quoted("soldier\t"s + sz) << " has " << rgsz.size() << " argument(s).\n";
-			SetConsoleTextAttribute(h, WINCON_TEXT_GRAY + WINCON_BG_BLACK);
-			std::cout << "[Message] Attribute \"soldier\" expected to have 4 arguments.\n";
-			SetConsoleTextAttribute(h, WINCON_TEXT_WHITE + WINCON_BG_BLACK);
+			cout_pink() << "[Error] String " << std::quoted("soldier\t"s + sz) << " has " << rgsz.size() << " argument(s).\n";
+			cout_gray() << "[Message] Attribute \"soldier\" expected to have 4 arguments.\n";
 			
 			if (rgsz.size() < 4)
 				return;
@@ -266,12 +260,8 @@ template<StringLiteral STR> struct wpn_stat_t
 
 		if (rgsz.size() != 11 && rgsz.size() != 12) [[unlikely]]
 		{
-			auto h = GetStdHandle(STD_OUTPUT_HANDLE);
-			SetConsoleTextAttribute(h, WINCON_TEXT_RED + WINCON_BG_BLACK);
-			std::cout << "[Error] String " << std::quoted(STR.value + "\t"s + sz) << " has " << rgsz.size() << " argument(s).\n";
-			SetConsoleTextAttribute(h, WINCON_TEXT_GRAY + WINCON_BG_BLACK);
-			std::cout << "[Message] Attribute \"" << STR << "\" expected to have 11 arguments for regular troops, or 12 arguments for gunpowder units.\n";
-			SetConsoleTextAttribute(h, WINCON_TEXT_WHITE + WINCON_BG_BLACK);
+			cout_r() << "[Error] String " << std::quoted(STR.value + "\t"s + sz) << " has " << rgsz.size() << " argument(s).\n";
+			cout_gray() << "[Message] Attribute \"" << STR << "\" expected to have 11 arguments for regular troops, or 12 arguments for gunpowder units.\n";
 
 			if (rgsz.size() < 11)
 				return;
@@ -792,7 +782,7 @@ export struct Unit_t
 			}
 			else
 			{
-				std::cout << "[Error] String " << std::quoted("banner "s + sz) << " cannot be prased.\n";
+				cout_w() << "[Error] String " << std::quoted("banner "s + sz) << " cannot be prased.\n";
 			}
 		}
 
@@ -850,7 +840,7 @@ export struct Unit_t
 		PARSE_NUMBER(move_speed_mod)
 
 		else
-			std::cout << "[Error] String " << std::quoted(sz) << " cannot be parsed.\n";
+			cout_w() << "[Error] String " << std::quoted(sz) << " cannot be parsed.\n";
 
 #undef PARSE_STRING
 #undef PARSE_OBJECT
@@ -1145,10 +1135,10 @@ namespace EDU
 					iCount++;
 			}
 
-			std::cout << "There are " << iCount << " units presented.\n";
+			cout_w() << "There are " << iCount << " units presented.\n";
 		}
 		else
-			std::cout << "Could not open file: export_descr_unit.txt\n";
+			cout_w() << "Could not open file: export_descr_unit.txt\n";
 
 		return iCount;
 	}
