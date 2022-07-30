@@ -364,7 +364,7 @@ FodyWeavers.xsd
 
 # M2TW CUSTOM
 *.modeldb
-*.txt
+/*.txt
 *.xml
 *.idx
 *.dat

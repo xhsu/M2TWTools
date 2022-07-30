@@ -1,16 +1,18 @@
 // CharacterTraits.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#include <bit>
+#include <charconv>
+#include <codecvt>
 #include <deque>
+#include <functional>
+#include <iostream>	// std::cin
 #include <list>
+#include <ranges>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
-#include <iostream>
-#include <ranges>
-#include <functional>
-#include <unordered_set>
-#include <charconv>
 
 #include <cassert>
 #include <cstdio>
@@ -19,15 +21,15 @@
 
 #include <experimental/generator>
 
+using std::bit_cast;
 using std::deque;
+using std::function;
 using std::list;
-using std::pair;
 using std::string;
 using std::string_view;
+using std::unordered_map;
 using std::variant;
 using std::vector;
-using std::function;
-using std::unordered_set;
 
 using std::experimental::generator;
 
@@ -49,6 +51,7 @@ deque<Trait_t> g_Traits;
 Trait_t* g_pCurTrait = nullptr;
 Level_t* g_pCurLevel = nullptr;
 list<string> g_rgszUnknownTokens;
+unordered_map<string, string> g_rgszDic;
 
 bool g_bApplicationRunning = true;
 string g_szCurCommand = "";
@@ -107,41 +110,21 @@ generator<vector<string_view>> ConsoleCommand(void) noexcept
 	}
 }
 
-template<typename T, typename U>
-bool Contains(const T& Range, const U& Search) noexcept
-{
-	if constexpr (requires(typename T::value_type t, U u) { t.contains(u); })
-	{
-		for (auto&& elem : Range)
-		{
-			if (elem.contains(Search))
-				return true;
-		}
-
-		return false;
-	}
-	else if constexpr (requires(typename T::value_type t, typename U::value_type u) { t.contains(u); })
-	{
-		for (auto&& elem : Range)
-		{
-			for (auto&& elem2 : Search)
-			{
-				if (elem.contains(elem2))
-					return true;
-			}
-		}
-
-		return false;
-	}
-}
-
 int main(int argc, char* argv[]) noexcept
 {
-	if (FILE* f = std::fopen("export_descr_character_traits.txt", "rb"); f != nullptr)
+	char const* pTraitFileName = "export_descr_character_traits.txt";
+	char const* pTraitTranslationFileName = "export_vnvs.txt.strings.bin";
+
+	if (argc > 2)
+		pTraitFileName = argv[1];
+	if (argc > 3)
+		pTraitTranslationFileName = argv[2];
+
+	if (FILE* f = std::fopen(pTraitFileName, "rb"); f != nullptr)
 	{
 		fseek(f, 0, SEEK_END);
 
-		auto fsize = ftell(f);
+		auto const fsize = ftell(f);
 		char* p = (char*)std::calloc(fsize + 1, sizeof(char));
 
 		fseek(f, 0, SEEK_SET);
@@ -254,8 +237,60 @@ int main(int argc, char* argv[]) noexcept
 
 		free(p);
 		fclose(f);
+
+		fmt::print("Successfully loading {} traits.\n", g_Traits.size());
 	}
 
+	if (FILE* f = std::fopen(pTraitTranslationFileName, "rb"); f != nullptr)
+	{
+		fseek(f, 0, SEEK_SET);
+
+		short iStyle1 = 0, iStyle2 = 0;
+		fread(&iStyle1, sizeof(iStyle1), 1, f);
+		fread(&iStyle2, sizeof(iStyle2), 1, f);
+
+		assert(iStyle1 == 2 && iStyle2 == 2048);
+
+		int iCount = 0;
+		fread(&iCount, sizeof(iCount), 1, f);
+
+		std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Convert;	// Fuck C++17
+
+		for (int i = 0; i < iCount; ++i)
+		{
+			short iStrLen = 0;
+			fread(&iStrLen, sizeof(iStrLen), 1, f);
+
+			std::u16string szTagStr(iStrLen, '\0');
+			fread(szTagStr.data(), sizeof(char16_t), iStrLen, f);
+
+			iStrLen = 0;
+			fread(&iStrLen, sizeof(iStrLen), 1, f);
+
+			std::u16string szScreenStr(iStrLen, '\0');
+			fread(szScreenStr.data(), sizeof(char16_t), iStrLen, f);
+
+			for (auto&& c : szScreenStr)
+				if (bit_cast<unsigned short>(c) == 10)
+					c = static_cast<char16_t>('\n');
+
+			g_rgszDic.try_emplace(Convert.to_bytes(szTagStr), Convert.to_bytes(szScreenStr));
+		}
+
+		std::fclose(f);
+		fmt::print("Successfully loading {} translation entries.\n", g_rgszDic.size());
+
+		if (FILE* FOut = std::fopen("export_vnvs.txt", "wt"); FOut != nullptr)
+		{
+			for (const auto& [szTagStr, szScreenStr] : g_rgszDic)
+				fmt::print(FOut, "{{{}}}{}\n", szTagStr, szScreenStr);
+
+			std::fclose(FOut);
+			fmt::print("Successfully saved translation file as {}.\n", "export_vnvs.txt");
+		}
+	}
+
+	// Link up the anti-trait.
 	for (auto&& Trait : g_Traits)
 	{
 		for (auto&& AntiTrait : Trait.m_AntiTraits)
@@ -268,6 +303,23 @@ int main(int argc, char* argv[]) noexcept
 			else
 				fmt::print(fg(fmt::color::dark_golden_rod) | fmt::emphasis::italic, "Anti-trait \"{}\" of \"{}\" no found.\n", std::get<string>(AntiTrait), Trait.m_Name);
 		}
+	}
+
+	// Link up the texts.
+	static auto const fnTranslate = [](string* psz) {try { *psz = g_rgszDic.at(*psz); } catch (...) {}};
+	for (auto&& Trait : g_Traits)
+	{
+		for (auto&& Level : Trait.m_Levels)
+		{
+			fnTranslate(&Level.m_Name);
+			fnTranslate(&Level.m_Description);
+			fnTranslate(&Level.m_EffectsDescription);
+			fnTranslate(&Level.m_Epithet);
+			fnTranslate(&Level.m_GainMessage);
+			fnTranslate(&Level.m_LoseMessage);
+		}
+
+		fnTranslate(&Trait.m_Name);
 	}
 
 	//for (const auto& Trait : g_Traits)
@@ -297,7 +349,7 @@ int main(int argc, char* argv[]) noexcept
 
 		else if (cmdarg[0] == "name")
 		{
-			static auto const fnTrName = [](const string& szName, const Trait_t& Trait) -> bool { return Trait.m_Name.contains(szName.c_str()); };
+			static auto const fnTrName = [](const string& szName, const Trait_t& Trait) -> bool { return Trait.m_Name.contains(szName); };
 			static auto const fnTrNameOr = [](const auto& rgszNames, const Trait_t& Trait) -> bool
 			{
 				for (auto&& Name : rgszNames)
@@ -518,6 +570,45 @@ int main(int argc, char* argv[]) noexcept
 
 			//g_rgfnFilters.push_back(fn);
 			//g_rgszInfoStrings.emplace_back("Must contains only positive effect on all level(s).");
+		}
+		else if (cmdarg[0] == "epithet")
+		{
+			static auto const fnHasEpithet = [](const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					if (!Level.m_Epithet.empty())
+						return true;
+				}
+
+				return false;
+			};
+			static auto const fnHasNoEpithet = [](const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					if (!Level.m_Epithet.empty())
+						return false;
+				}
+
+				return true;
+			};
+
+			if (cmdarg.size() == 1 || !_strnicmp(cmdarg[1].data(), "true", cmdarg[1].length()))
+			{
+				g_rgfnFilters.push_back(fnHasEpithet);
+				g_rgszInfoStrings.emplace_back("Mush have epithet associated with.");
+			}
+			else if (!_strnicmp(cmdarg[1].data(), "false", cmdarg[1].length()))
+			{
+				g_rgfnFilters.push_back(fnHasNoEpithet);
+				g_rgszInfoStrings.emplace_back("Mush have no epithet associated with.");
+			}
+			else
+			{
+				fmt::print(fg(fmt::color::red), "Command \"epithet\" have an optional argument ['true'|'false'].\n");
+				continue;
+			}
 		}
 
 		else if (cmdarg[0] == "pop")
