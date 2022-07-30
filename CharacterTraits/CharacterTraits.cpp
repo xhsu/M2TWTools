@@ -6,6 +6,11 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <iostream>
+#include <ranges>
+#include <functional>
+#include <unordered_set>
+#include <charconv>
 
 #include <cassert>
 #include <cstdio>
@@ -21,176 +26,34 @@ using std::string;
 using std::string_view;
 using std::variant;
 using std::vector;
+using std::function;
+using std::unordered_set;
 
 using std::experimental::generator;
 
-enum class Character_e
+using namespace std::string_literals;
+using namespace std::string_view_literals;
+
+import UtlWinConsole;
+
+import CharacterTraits;
+
+enum class SearchMode_e : std::uint8_t
 {
-	ERR,
-
-	family,
-
-};
-
-enum class Effect_e
-{
-	ERR,
-
-	Command,
-
-};
-
-enum class Culture_e
-{
-	NONE,
-
-	middle_eastern,
-};
-
-struct Level_t
-{
-	string m_Name{};
-	string m_Description{};
-	string m_EffectsDescription{};
-	string m_GainMessage{};
-	string m_LoseMessage{};
-	string m_Epithet{};
-	short m_Threshold = 0;
-	short m_Level = 0;
-	vector<pair<string, short>> m_Effects{};
-};
-
-struct Trait_t
-{
-	string m_Name{};
-	vector<string> m_Character{};
-	vector<string> m_ExcludeCultures{};
-	short m_NoGoingBackLevel = -1;
-	bool m_Hidden : 1 { false };
-	vector<variant<string, const Trait_t*>> m_AntiTraits{};
-	deque<Level_t> m_Levels{};	// std::vector would move and thus invalidate our pointer.
-
-	inline void Print(void) const noexcept
-	{
-		static constexpr auto SPACES_COUNT = 17;
-		static constexpr auto SPACES_COUNT2 = 20;
-
-		fmt::print("{}\n", m_Name);
-
-		if (!m_Character.empty())
-		{
-			string ListStr{};
-
-			for (const auto& s : m_Character)
-				ListStr += s + ", ";
-
-			ListStr.pop_back();
-			ListStr.pop_back();
-
-			fmt::print("\t{0: <{2}}{1}\n", "Characters", ListStr, SPACES_COUNT);
-		}
-
-		if (!m_ExcludeCultures.empty())
-		{
-			string ListStr{};
-
-			for (const auto& s : m_ExcludeCultures)
-				ListStr += s + ", ";
-
-			ListStr.pop_back();
-			ListStr.pop_back();
-
-			fmt::print("\t{0: <{2}}{1}\n", "ExcludeCultures", ListStr, SPACES_COUNT);
-		}
-
-		if (m_NoGoingBackLevel >= 0)
-		{
-			fmt::print("\t{0: <{2}}{1}\n", "NoGoingBackLevel", m_NoGoingBackLevel, SPACES_COUNT);
-		}
-
-		if (m_Hidden)
-		{
-			fmt::print("\tHidden\n");
-		}
-
-		if (!m_AntiTraits.empty())
-		{
-			string ListStr{};
-
-			for (const auto& AntiTrait : m_AntiTraits)
-			{
-				try
-				{
-					ListStr += std::get<string>(AntiTrait) + ", ";
-				}
-				catch (...)
-				{
-					try
-					{
-						ListStr += std::get<const Trait_t*>(AntiTrait)->m_Name + ", ";
-					}
-					catch (...)
-					{
-						ListStr = "ERROR";
-						fmt::print(fg(fmt::color::dark_red), "ERROR: YOU SHOULD NEVER SEE THIS!");
-					}
-				}
-			}
-
-			ListStr.pop_back();
-			ListStr.pop_back();
-
-			fmt::print("\t{0: <{2}}{1}\n", "AntiTraits", ListStr, SPACES_COUNT);
-		}
-
-		for (const auto& Level : m_Levels)
-		{
-			fmt::print("\n\tLevel {}\n", Level.m_Name);
-
-			if (!Level.m_Description.empty())
-			{
-				fmt::print("\t\t{0: <{2}}{1}\n", "Description", Level.m_Description, SPACES_COUNT2);
-			}
-
-			if (!Level.m_EffectsDescription.empty())
-			{
-				fmt::print("\t\t{0: <{2}}{1}\n", "EffectsDescription", Level.m_EffectsDescription, SPACES_COUNT2);
-			}
-
-			if (!Level.m_GainMessage.empty())
-			{
-				fmt::print("\t\t{0: <{2}}{1}\n", "GainMessage", Level.m_GainMessage, SPACES_COUNT2);
-			}
-
-			if (!Level.m_LoseMessage.empty())
-			{
-				fmt::print("\t\t{0: <{2}}{1}\n", "LoseMessage", Level.m_LoseMessage, SPACES_COUNT2);
-			}
-
-			if (!Level.m_Epithet.empty())
-			{
-				fmt::print("\t\t{0: <{2}}{1}\n", "Epithet", Level.m_Epithet, SPACES_COUNT2);
-			}
-
-			if (Level.m_Threshold)
-			{
-				fmt::print("\t\t{0: <{2}}{1}\n", "Threshold", Level.m_Threshold, SPACES_COUNT2);
-			}
-
-			for (const auto& Effect : Level.m_Effects)
-			{
-				fmt::print("\t\t{0: <{1}}{2} {3}\n", "Effect", SPACES_COUNT2, Effect.first, Effect.second);
-			}
-		}
-
-		fmt::print("\n;------------------------------------------\n");
-	}
+	NAME = (1 << 0),
+	CHAR_TYPE = (1 << 1),
+	EXCL_CULTURE = (1 << 2),
 };
 
 deque<Trait_t> g_Traits;
 Trait_t* g_pCurTrait = nullptr;
 Level_t* g_pCurLevel = nullptr;
 list<string> g_rgszUnknownTokens;
+
+bool g_bApplicationRunning = true;
+string g_szCurCommand = "";
+vector<function<bool(const Trait_t& Trait)>> g_rgfnFilters;
+vector<string> g_rgszInfoStrings;
 
 generator<string_view> LineByLine(const char* const p) noexcept
 {
@@ -226,6 +89,50 @@ generator<string_view> Split(const string_view& s, const char* delimiters = ", "
 	}
 
 	co_return;
+}
+
+generator<vector<string_view>> ConsoleCommand(void) noexcept
+{
+	while (g_bApplicationRunning)
+	{
+		g_szCurCommand.push_back(std::cin.get());
+
+		if (g_szCurCommand.back() == '\n')
+		{
+			auto SplitResult = Split(g_szCurCommand, ", \n\r\t");
+			co_yield vector<string_view>(SplitResult.begin(), SplitResult.end());	// std::ranges::to #UPDATE_AT_CPP23
+
+			g_szCurCommand.clear();
+		}
+	}
+}
+
+template<typename T, typename U>
+bool Contains(const T& Range, const U& Search) noexcept
+{
+	if constexpr (requires(typename T::value_type t, U u) { t.contains(u); })
+	{
+		for (auto&& elem : Range)
+		{
+			if (elem.contains(Search))
+				return true;
+		}
+
+		return false;
+	}
+	else if constexpr (requires(typename T::value_type t, typename U::value_type u) { t.contains(u); })
+	{
+		for (auto&& elem : Range)
+		{
+			for (auto&& elem2 : Search)
+			{
+				if (elem.contains(elem2))
+					return true;
+			}
+		}
+
+		return false;
+	}
 }
 
 int main(int argc, char* argv[]) noexcept
@@ -326,7 +233,7 @@ int main(int argc, char* argv[]) noexcept
 				if (rgsz.size() != 2) [[unlikely]]
 					fmt::print(fg(fmt::color::dark_red), "ERROR: 2 parameters expected, but {} parameter(s) received.\n", rgsz.size());
 
-				g_pCurLevel->m_Effects.emplace_back(rgsz[0], std::stoi(string(rgsz[1])));
+				g_pCurLevel->m_Effects.emplace_back(string(rgsz[0]), std::stoi(string(rgsz[1])));
 			}
 
 			else
@@ -363,15 +270,308 @@ int main(int argc, char* argv[]) noexcept
 		}
 	}
 
-	for (const auto& Trait : g_Traits)
-		Trait.Print();
+	//for (const auto& Trait : g_Traits)
+	//	Trait.Print();
 
-	// Print unparsed tokens.
+	//list<string> efx;
+	//for (const auto& Trait : g_Traits)
+	//{
+	//	for (const auto& Level : Trait.m_Levels)
+	//		for (const auto& Effect : Level.m_Effects)
+	//			if (std::find(efx.cbegin(), efx.cend(), Effect.first) == efx.cend())
+	//				efx.emplace_back(Effect.first);
+	//}
+	//efx.sort();
+	//for (auto&& Effect : efx)
+	//	fmt::print("{}\n", Effect);
+
+	for (auto&& cmdarg : ConsoleCommand())
+	{
+		if (cmdarg.empty())
+			continue;
+		else if (cmdarg[0] == "exit")
+		{
+			g_bApplicationRunning = false;
+			return EXIT_SUCCESS;
+		}
+
+		else if (cmdarg[0] == "name")
+		{
+			static auto const fnTrName = [](const string& szName, const Trait_t& Trait) -> bool { return Trait.m_Name.contains(szName.c_str()); };
+			static auto const fnTrNameOr = [](const auto& rgszNames, const Trait_t& Trait) -> bool
+			{
+				for (auto&& Name : rgszNames)
+				{
+					if (Trait.m_Name.contains(Name))
+						return true;
+				}
+
+				return false;
+			};
+			static auto const fnLvName = [](const string& szName, const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					if (Level.m_Name.contains(szName))
+						return true;
+				}
+
+				return false;
+			};
+			static auto const fnLvNameOr = [](const auto& rgszNames, const Trait_t& Trait) -> bool
+			{
+
+				for (auto&& Level : Trait.m_Levels)
+				{
+					for (auto&& Name : rgszNames)
+						if (Level.m_Name.contains(Name))
+							return true;
+				}
+
+				return false;
+			};
+			static auto const fnName = [](const string& szName, const Trait_t& Trait) -> bool { return fnTrName(szName, Trait) || fnLvName(szName, Trait); };
+			static auto const fnNameOr = [](const auto& rgszNames, const Trait_t& Trait) -> bool { return fnTrNameOr(rgszNames, Trait) || fnLvNameOr(rgszNames, Trait); };
+
+			if (cmdarg.size() < 2)
+			{
+				fmt::print(fg(fmt::color::red), "Command \"name\": expecting at least 1 argument, but {} received.\n", (int)cmdarg.size() - 1);
+				continue;
+			}
+			else if (cmdarg[1] == "tr")
+			{
+				if (cmdarg.size() < 3)
+				{
+					fmt::print(fg(fmt::color::red), "Command \"name tr\": expecting at least 1 more argument, but total {} received.\n", (int)cmdarg.size() - 1);
+					continue;
+				}
+				else if (cmdarg.size() == 3)
+				{
+					g_rgfnFilters.push_back(std::bind_front(fnTrName, string(cmdarg[2])));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgszInfoStrings.emplace_back(fmt::format("Must contains: \"{}\" in trait name", cmdarg[2]));
+				}
+				else
+				{
+					g_rgfnFilters.push_back(std::bind_front(fnTrNameOr, vector<string>(cmdarg.begin() + 2, cmdarg.end())));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgszInfoStrings.emplace_back(fmt::format("Must contains one of these strings in its trait name: \"{}\"", fmt::join(cmdarg | std::views::drop(2), "\", \"")));
+				}
+			}
+			else if (cmdarg[1] == "lv")
+			{
+				if (cmdarg.size() < 3)
+				{
+					fmt::print(fg(fmt::color::red), "Command \"name lv\": expecting at least 1 more argument, but total {} received.\n", (int)cmdarg.size() - 1);
+					continue;
+				}
+				else if (cmdarg.size() == 3)
+				{
+					g_rgfnFilters.push_back(std::bind_front(fnLvName, string(cmdarg[2])));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgszInfoStrings.emplace_back(fmt::format("Must contains: \"{}\" in any of level name", cmdarg[2]));
+				}
+				else
+				{
+					g_rgfnFilters.push_back(std::bind_front(fnLvNameOr, vector<string>(cmdarg.begin() + 2, cmdarg.end())));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgszInfoStrings.emplace_back(fmt::format("Must contains one of these strings in its level name: \"{}\"", fmt::join(cmdarg | std::views::drop(2), "\", \"")));
+				}
+			}
+			else if (cmdarg.size() == 2)
+			{
+				g_rgfnFilters.push_back(std::bind_front(fnName, string(cmdarg[1])));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+				g_rgszInfoStrings.emplace_back(fmt::format("Must contains: \"{}\" in either trait name or level names.", cmdarg[1]));
+			}
+			else if (cmdarg.size() > 2)
+			{
+				g_rgfnFilters.push_back(std::bind_front(fnNameOr, vector<string>(cmdarg.begin() + 1, cmdarg.end())));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+				g_rgszInfoStrings.emplace_back(fmt::format("Must contains one of these strings in either trait name or level names: \"{}\"", fmt::join(cmdarg | std::views::drop(1), "\", \"")));
+			}
+			else [[unlikely]]
+				std::unreachable();
+		}
+		else if (cmdarg[0] == "prop")
+		{
+			static auto const fnLesser = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					for (auto&& Effect : Level.m_Effects)
+					{
+						if (!_strnicmp(szProperty.c_str(), Effect.m_Type.c_str(), szProperty.length())
+							&& Effect.m_Modification < iModifer)
+						{
+							return true;
+						}
+					}
+				}
+
+				return false;
+			};
+			static auto const fnLesserOrEqual = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					for (auto&& Effect : Level.m_Effects)
+					{
+						if (!_strnicmp(szProperty.c_str(), Effect.m_Type.c_str(), szProperty.length())
+							&& Effect.m_Modification <= iModifer)
+						{
+							return true;
+						}
+					}
+				}
+
+				return false;
+			};
+			static auto const fnEqual = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					for (auto&& Effect : Level.m_Effects)
+					{
+						if (!_strnicmp(szProperty.c_str(), Effect.m_Type.c_str(), szProperty.length())
+							&& Effect.m_Modification == iModifer)
+						{
+							return true;
+						}
+					}
+				}
+
+				return false;
+			};
+			static auto const fnGreaterOrEqual = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					for (auto&& Effect : Level.m_Effects)
+					{
+						if (!_strnicmp(szProperty.c_str(), Effect.m_Type.c_str(), szProperty.length())
+							&& Effect.m_Modification >= iModifer)
+						{
+							return true;
+						}
+					}
+				}
+
+				return false;
+			};
+			static auto const fnGreater = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					for (auto&& Effect : Level.m_Effects)
+					{
+						if (!_strnicmp(szProperty.c_str(), Effect.m_Type.c_str(), szProperty.length())
+							&& Effect.m_Modification > iModifer)
+						{
+							return true;
+						}
+					}
+				}
+
+				return false;
+			};
+
+			if (cmdarg.size() != 4)
+			{
+				fmt::print(fg(fmt::color::red), "Command \"prop\" must have exact 4 arguments.\n");
+				continue;
+			}
+
+			short iCompare = 0;
+			std::from_chars(cmdarg[3].data(), cmdarg[3].data() + cmdarg[3].length(), iCompare);
+
+			if (cmdarg[2] == "<")
+			{
+				g_rgfnFilters.push_back(std::bind_front(fnLesser, string(cmdarg[1]), iCompare));
+				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and lesser than {}.", cmdarg[1], iCompare));
+			}
+			else if (cmdarg[2] == "<=")
+			{
+				g_rgfnFilters.push_back(std::bind_front(fnLesserOrEqual, string(cmdarg[1]), iCompare));
+				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and lesser than or equals to {}.", cmdarg[1], iCompare));
+			}
+			else if (cmdarg[2] == "==")
+			{
+				g_rgfnFilters.push_back(std::bind_front(fnEqual, string(cmdarg[1]), iCompare));
+				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and equals to {}.", cmdarg[1], iCompare));
+			}
+			else if (cmdarg[2] == ">=")
+			{
+				g_rgfnFilters.push_back(std::bind_front(fnGreaterOrEqual, string(cmdarg[1]), iCompare));
+				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and greater than or equals to {}.", cmdarg[1], iCompare));
+			}
+			else if (cmdarg[2] == ">")
+			{
+				g_rgfnFilters.push_back(std::bind_front(fnGreater, string(cmdarg[1]), iCompare));
+				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and greater than {}.", cmdarg[1], iCompare));
+			}
+			else
+			{
+				fmt::print(fg(fmt::color::red), "Operator '{}' does not supported.\n", cmdarg[2]);
+
+				if (cmdarg[2] == "=")
+					fmt::print(fg(fmt::color::red), "Use '==' as equality operator instead.\n");
+				else if (cmdarg[2] == "<>" || cmdarg[2] == "!=")
+					fmt::print(fg(fmt::color::red), "Operator 'not equal' does not make sense here.\n");
+
+				continue;
+			}
+
+			//g_rgfnFilters.push_back(fn);
+			//g_rgszInfoStrings.emplace_back("Must contains only positive effect on all level(s).");
+		}
+
+		else if (cmdarg[0] == "pop")
+		{
+			if (g_rgfnFilters.empty())
+				fmt::print(fg(fmt::color::red), "Illegal usage of command \"pop\": No filter to remove from stack.\n");
+			else
+			{
+				fmt::print("Removed filter: {}\n", fmt::styled(g_rgszInfoStrings.back(), fg(fmt::color::dark_gray) | fmt::emphasis::strikethrough | fmt::emphasis::italic));
+
+				g_rgfnFilters.pop_back();
+				g_rgszInfoStrings.pop_back();
+			}
+		}
+		else if (cmdarg[0] == "list")
+		{
+			clear_console();
+			fmt::print("Listing trait(s) under filter(s):\n");
+			for (const auto& szInfo : g_rgszInfoStrings)
+				fmt::print(fg(fmt::color::slate_gray), " - {}\n", szInfo);
+
+			static const auto fnApplyAllFilters = [](const Trait_t& Trait) -> bool
+			{
+				for (auto&& fn : g_rgfnFilters)
+					if (!fn(Trait))
+						return false;
+
+				return true;
+			};
+
+			for (auto&& Trait : g_Traits | std::views::filter(fnApplyAllFilters))
+				Trait.Print();
+		}
+		else if (cmdarg[0] == "new")
+		{
+			g_rgfnFilters.clear();
+			g_rgszInfoStrings.clear();
+			clear_console();
+		}
+		else if (cmdarg[0] == "clear")
+		{
+			clear_console();
+		}
+		else
+			fmt::print(fg(fmt::color::red), "Unknown command: \"{}\".\n", cmdarg[0]);
+	}
+
+#pragma region Handle unparsed tokens
 	g_rgszUnknownTokens.sort();
 	g_rgszUnknownTokens.unique();
 
 	for (const auto& Token : g_rgszUnknownTokens)
 		fmt::print(fg(fmt::color::dark_golden_rod), "Unparsed token: {}\n", Token);
+#pragma endregion Handle unparsed tokens
 
 	return EXIT_SUCCESS;
 }
