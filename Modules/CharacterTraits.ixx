@@ -1,10 +1,11 @@
 module;
 
-#include <string>
-#include <vector>
-#include <variant>
 #include <deque>
+#include <ranges>
+#include <string>
 #include <unordered_set>
+#include <variant>
+#include <vector>
 
 #include <cassert>
 
@@ -109,7 +110,7 @@ export struct Effect_t final
 		return (m_Modification * iSign) >= 0;
 	}
 
-	decltype(auto) GetFormatStyle(void) const noexcept { return fmt::fg(IsPositive() ? fmt::color::lime_green : fmt::color::pale_violet_red); }
+	decltype(auto) GetFormatStyle(void) const noexcept { return fmt::fg(IsPositive() ? fmt::color::lime_green : fmt::color::orange_red); }
 };
 
 export struct Level_t
@@ -173,7 +174,7 @@ export struct Level_t
 		case NEGATIVE:
 			return fmt::fg(fmt::color::red);
 		case LEAN_NEGATIVE:
-			return fmt::fg(fmt::color::orange_red);
+			return fmt::fg(fmt::color::pale_violet_red);
 		case NEUTER:
 			return fmt::fg(fmt::color::light_golden_rod_yellow);
 		case LEAN_POSITIVE:
@@ -308,6 +309,59 @@ export struct Trait_t
 			{
 				fmt::print(Effect.GetFormatStyle(), "\t\t{0: <{1}}{2} {3}\n", "Effect", SPACES_COUNT2, Effect.m_Type, Effect.m_Modification);
 			}
+		}
+
+		fmt::print("\n;------------------------------------------\n");
+	}
+};
+
+export struct Affect_t
+{
+	variant<string, Trait_t const*> m_Trait;
+	short m_Level = 0;
+	short m_Chance = 0;
+};
+
+export struct Trigger_t
+{
+	string m_Name;
+	string m_WhenToTest;
+	vector<string> m_Conditions;
+	vector<Affect_t> m_Affects;
+
+	inline void Print(void) const noexcept
+	{
+		std::size_t iLongestTrait = 0;
+		for (auto&& Affect : m_Affects)
+			iLongestTrait = std::max(
+				Affect.m_Trait.index() == 0 ? std::get<string>(Affect.m_Trait).length() : std::get<Trait_t const*>(Affect.m_Trait)->m_Name.length(),
+				iLongestTrait
+			);
+
+		fmt::print("{: >10}\t{}\n", "Trigger", m_Name);
+		fmt::print("{: >10}\t{}\n", "WhenToTest", m_WhenToTest);
+
+		if (!m_Conditions.empty())
+		{
+			fmt::print("\n");
+			fmt::print("{: >10}\t{}\n", "Condition", m_Conditions[0]);
+
+			if (m_Conditions.size() > 1)
+				for (auto&& Condition : m_Conditions | std::ranges::views::drop(1))
+					fmt::print("{: >10}\t{}\n", "and", Condition);
+
+			fmt::print("\n");
+		}
+
+		for (auto&& Affect : m_Affects)
+		{
+			fmt::print("{: >10}\t{: <{}} {} Chance {}\n",
+				"Affects",
+				Affect.m_Trait.index() == 0 ? std::get<string>(Affect.m_Trait) : std::get<Trait_t const*>(Affect.m_Trait)->m_Name,
+				iLongestTrait,
+				Affect.m_Level,
+				Affect.m_Chance
+			);
 		}
 
 		fmt::print("\n;------------------------------------------\n");

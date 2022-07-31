@@ -55,6 +55,9 @@ Level_t* g_pCurLevel = nullptr;
 list<string> g_rgszUnknownTokens;
 unordered_map<string, string> g_rgszDic;
 
+deque<Trigger_t> g_Triggers;
+Trigger_t* g_pCurTrigger = nullptr;
+
 bool g_bApplicationRunning = true;
 string g_szCurCommand = "";
 vector<function<bool(const Trait_t& Trait)>> g_rgfnFilters;
@@ -137,14 +140,14 @@ generator<tuple<char16_t const*, std::int16_t, char16_t const*, std::int16_t>> P
 		iKeyLength = 0;
 		fread(&iKeyLength, sizeof(iKeyLength), 1, f);
 
-		pszKey = (char16_t*)_recalloc(pszKey, iKeyLength + 1, sizeof(char16_t));
+		pszKey = (char16_t*)realloc(pszKey, (iKeyLength + 1) * sizeof(char16_t));
 		pszKey[iKeyLength] = u'\0';
 		fread(pszKey, sizeof(char16_t), iKeyLength, f);
 
 		iValueLength = 0;
 		fread(&iValueLength, sizeof(iValueLength), 1, f);
 
-		pszValue = (char16_t*)_recalloc(pszValue, iValueLength + 1, sizeof(char16_t));
+		pszValue = (char16_t*)realloc(pszValue, (iValueLength + 1) * sizeof(char16_t));
 		pszValue[iValueLength] = u'\0';
 		fread(pszValue, sizeof(char16_t), iValueLength, f);
 
@@ -278,12 +281,42 @@ int main(int argc, char* argv[]) noexcept
 				g_pCurLevel->m_Effects.emplace_back(string(rgsz[0]), std::stoi(string(rgsz[1])));
 			}
 
+			else if (sz.starts_with("Trigger "))
+			{
+				g_pCurTrigger = &g_Triggers.emplace_back();
+				g_pCurTrigger->m_Name = string(sz, (size_t)8, sz.length() - 8);
+			}
+			else if (sz.starts_with("WhenToTest "))
+			{
+				g_pCurTrigger->m_WhenToTest = string(sz, (size_t)11, sz.length() - 11);
+			}
+			else if (sz.starts_with("Condition ") || sz.starts_with("and "))
+			{
+				g_pCurTrigger->m_Conditions.emplace_back(string(sz.substr(sz.find_first_of(' ') + 1)));
+			}
+			else if (sz.starts_with("Affects "))
+			{
+				auto future = Split(sz.substr(8));
+				vector<string_view> rgsz(future.begin(), future.end());
+
+				if (rgsz.size() != 4)
+				{
+					fmt::print(fg(fmt::color::red), "wrong arg count: {}", sz);
+					continue;
+				}
+
+				Affect_t& Affect = g_pCurTrigger->m_Affects.emplace_back();
+				Affect.m_Trait = string(rgsz[0]);
+				std::from_chars(rgsz[1].data(), rgsz[1].data() + rgsz[1].length(), Affect.m_Level);
+				std::from_chars(rgsz[3].data(), rgsz[3].data() + rgsz[3].length(), Affect.m_Chance);
+			}
+
 			else
 			{
 				if (sz.contains(' '))
 				{
 					auto us = Split(sz);
-					vector<string_view> rgsz(us.begin(), us.end());
+					vector<string_view> rgsz(us.begin(), us.end());	// #UPDATE_AT_CPP23 ranges::to
 
 					g_rgszUnknownTokens.emplace_back(rgsz[0]);
 				}
@@ -321,7 +354,7 @@ int main(int argc, char* argv[]) noexcept
 		std::int16_t iStrLen = 0;
 		char16_t* pszKey = nullptr, * pszValue = nullptr;
 
-		for (int i = 0; i < iCount; ++i)
+		for (std::int32_t i = 0; i < iCount; ++i)
 		{
 			fread(&iStrLen, sizeof(iStrLen), 1, f);
 
@@ -391,8 +424,16 @@ int main(int argc, char* argv[]) noexcept
 		fnTranslate(&Trait.m_Name);
 	}
 
-	//for (const auto& Trait : g_Traits)
-	//	Trait.Print();
+	//for (auto&& Trigger : g_Triggers)
+	//	Trigger.Print();
+
+#pragma region Handle unparsed tokens
+	g_rgszUnknownTokens.sort();
+	g_rgszUnknownTokens.unique();
+
+	for (const auto& Token : g_rgszUnknownTokens)
+		fmt::print(fg(fmt::color::dark_golden_rod), "Unparsed token: {}\n", Token);
+#pragma endregion Handle unparsed tokens
 
 	//list<string> efx;
 	//for (const auto& Trait : g_Traits)
@@ -724,14 +765,6 @@ int main(int argc, char* argv[]) noexcept
 		else
 			fmt::print(fg(fmt::color::red), "Unknown command: \"{}\".\n", cmdarg[0]);
 	}
-
-#pragma region Handle unparsed tokens
-	g_rgszUnknownTokens.sort();
-	g_rgszUnknownTokens.unique();
-
-	for (const auto& Token : g_rgszUnknownTokens)
-		fmt::print(fg(fmt::color::dark_golden_rod), "Unparsed token: {}\n", Token);
-#pragma endregion Handle unparsed tokens
 
 	return EXIT_SUCCESS;
 }
