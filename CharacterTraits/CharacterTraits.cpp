@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <tuple>
 
 #include <cassert>
 #include <cstdio>
@@ -30,6 +31,7 @@ using std::string_view;
 using std::unordered_map;
 using std::variant;
 using std::vector;
+using std::tuple;
 
 using std::experimental::generator;
 
@@ -110,10 +112,55 @@ generator<vector<string_view>> ConsoleCommand(void) noexcept
 	}
 }
 
+generator<tuple<char16_t const*, std::int16_t, char16_t const*, std::int16_t>> ParseStringsBin(FILE* f) noexcept
+{
+	fseek(f, 0, SEEK_SET);
+
+	std::int16_t iStyle1 = 0, iStyle2 = 0;
+	fread(&iStyle1, sizeof(iStyle1), 1, f);
+	fread(&iStyle2, sizeof(iStyle2), 1, f);
+
+	if (iStyle1 != 2 || iStyle2 != 2048)
+	{
+		co_yield std::make_tuple(nullptr, 0, nullptr, 0);
+		co_return;	// WHY WHY WHY???? WHY CAN'T I JUST co_return A TUPLE?!
+	}
+
+	std::int32_t iCount = 0;
+	fread(&iCount, sizeof(iCount), 1, f);
+
+	char16_t* pszKey = nullptr, * pszValue = nullptr;
+	std::int16_t iKeyLength = 0, iValueLength = 0;
+
+	for (int i = 0; i < iCount; ++i)
+	{
+		iKeyLength = 0;
+		fread(&iKeyLength, sizeof(iKeyLength), 1, f);
+
+		pszKey = (char16_t*)_recalloc(pszKey, iKeyLength + 1, sizeof(char16_t));
+		pszKey[iKeyLength] = u'\0';
+		fread(pszKey, sizeof(char16_t), iKeyLength, f);
+
+		iValueLength = 0;
+		fread(&iValueLength, sizeof(iValueLength), 1, f);
+
+		pszValue = (char16_t*)_recalloc(pszValue, iValueLength + 1, sizeof(char16_t));
+		pszValue[iValueLength] = u'\0';
+		fread(pszValue, sizeof(char16_t), iValueLength, f);
+
+		co_yield std::make_tuple(pszKey, iKeyLength, pszValue, iValueLength);
+	}
+
+	free(pszKey);
+	free(pszValue);
+
+	co_return;
+}
+
 int main(int argc, char* argv[]) noexcept
 {
 	// Basicallly ask you to compile this code on windows...
-	static_assert(sizeof(char16_t) == sizeof(wchar_t), "Unsupported environment.");
+	static_assert(sizeof(char16_t) == sizeof(wchar_t), "Unsupported compiling environment.");
 
 	char const* pTraitFileName = "export_descr_character_traits.txt";
 	char const* pTraitTranslationFileName = "export_vnvs.txt.strings.bin";
@@ -271,33 +318,39 @@ int main(int argc, char* argv[]) noexcept
 		// Seems like M2TW requires this line to identify txt files.
 		fwrite(u"¬\n", sizeof(char16_t), 2, fout);	// Under "wt" mode(default), Windows interpret \n as CRLF eol. And consider \r\n as LF eol.
 
+		std::int16_t iStrLen = 0;
+		char16_t* pszKey = nullptr, * pszValue = nullptr;
+
 		for (int i = 0; i < iCount; ++i)
 		{
-			short iStrLen = 0;
 			fread(&iStrLen, sizeof(iStrLen), 1, f);
 
-			char16_t* pszTagStr = (char16_t*)std::calloc(iStrLen + 1, sizeof(char16_t));
-			fread(pszTagStr, sizeof(char16_t), iStrLen, f);
+			pszKey = (char16_t*)realloc(pszKey, (iStrLen + 1) * sizeof(char16_t));
+			pszKey[iStrLen] = u'\0';
+			fread(pszKey, sizeof(char16_t), iStrLen, f);
 			fwrite(u"{", sizeof(char16_t), 1, fout);
-			fwrite(pszTagStr, sizeof(char16_t), iStrLen, fout);
+			fwrite(pszKey, sizeof(char16_t), iStrLen, fout);
 			fwrite(u"}", sizeof(char16_t), 1, fout);
 
 			iStrLen = 0;
 			fread(&iStrLen, sizeof(iStrLen), 1, f);
 
-			//std::wstring szScreenStr(iStrLen, L'\0');
-			char16_t* pszScreenStr = (char16_t*)std::calloc(iStrLen + 1, sizeof(char16_t));
-			fread(pszScreenStr, sizeof(char16_t), iStrLen, f);
+			pszValue = (char16_t*)realloc(pszValue, (iStrLen + 1) * sizeof(char16_t));
+			pszValue[iStrLen] = u'\0';
+			fread(pszValue, sizeof(char16_t), iStrLen, f);
 
-			for (auto&& c : std::ranges::subrange(pszScreenStr, pszScreenStr + iStrLen + 1))
+			for (auto&& c : std::ranges::subrange(pszValue, pszValue + iStrLen + 1))
 				if (bit_cast<std::uint16_t>(c) == (std::uint16_t)10u)
 					c = u'\n';
 
-			fwrite(pszScreenStr, sizeof(char16_t), iStrLen, fout);
+			fwrite(pszValue, sizeof(char16_t), iStrLen, fout);
 			fwrite(u"\n", sizeof(char16_t), 1, fout);
 
-			g_rgszDic.try_emplace(Convert.to_bytes(pszTagStr), Convert.to_bytes(pszScreenStr));
+			g_rgszDic.try_emplace(Convert.to_bytes(pszKey), Convert.to_bytes(pszValue));
 		}
+
+		free(pszKey); pszKey = nullptr;
+		free(pszValue); pszValue = nullptr;
 
 		std::fclose(f);
 		fmt::print("Successfully loading {} translation entries.\n", g_rgszDic.size());
