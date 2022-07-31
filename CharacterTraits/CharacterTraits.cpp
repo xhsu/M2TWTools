@@ -1,4 +1,4 @@
-// CharacterTraits.cpp : This file contains the 'main' function. Program execution begins and ends there.
+﻿// CharacterTraits.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
 #include <bit>
@@ -112,6 +112,9 @@ generator<vector<string_view>> ConsoleCommand(void) noexcept
 
 int main(int argc, char* argv[]) noexcept
 {
+	// Basicallly ask you to compile this code on windows...
+	static_assert(sizeof(char16_t) == sizeof(wchar_t), "Unsupported environment.");
+
 	char const* pTraitFileName = "export_descr_character_traits.txt";
 	char const* pTraitTranslationFileName = "export_vnvs.txt.strings.bin";
 
@@ -119,6 +122,15 @@ int main(int argc, char* argv[]) noexcept
 		pTraitFileName = argv[1];
 	if (argc > 3)
 		pTraitTranslationFileName = argv[2];
+
+	string szTraitTranslationFileOutput = pTraitTranslationFileName;
+	if (auto const iPos = szTraitTranslationFileOutput.find(".strings.bin"); iPos != string::npos)
+		szTraitTranslationFileOutput.erase(iPos);
+	else
+	{
+		fmt::print("Invalid .strings.bin localization file input: {}.\n", szTraitTranslationFileOutput);
+		return EXIT_FAILURE;
+	}
 
 	if (FILE* f = std::fopen(pTraitFileName, "rb"); f != nullptr)
 	{
@@ -241,53 +253,57 @@ int main(int argc, char* argv[]) noexcept
 		fmt::print("Successfully loading {} traits.\n", g_Traits.size());
 	}
 
-	if (FILE* f = std::fopen(pTraitTranslationFileName, "rb"); f != nullptr)
+	if (FILE* f = std::fopen(pTraitTranslationFileName, "rb"), *fout = std::fopen(szTraitTranslationFileOutput.c_str(), "w, ccs=UTF-16LE"); f && fout)
 	{
 		fseek(f, 0, SEEK_SET);
 
-		short iStyle1 = 0, iStyle2 = 0;
+		std::int16_t iStyle1 = 0, iStyle2 = 0;
 		fread(&iStyle1, sizeof(iStyle1), 1, f);
 		fread(&iStyle2, sizeof(iStyle2), 1, f);
 
 		assert(iStyle1 == 2 && iStyle2 == 2048);
 
-		int iCount = 0;
+		std::int32_t iCount = 0;
 		fread(&iCount, sizeof(iCount), 1, f);
 
 		std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Convert;	// Fuck C++17
+
+		// Seems like M2TW requires this line to identify txt files.
+		fwrite(u"¬\n", sizeof(char16_t), 2, fout);	// Under "wt" mode(default), Windows interpret \n as CRLF eol. And consider \r\n as LF eol.
 
 		for (int i = 0; i < iCount; ++i)
 		{
 			short iStrLen = 0;
 			fread(&iStrLen, sizeof(iStrLen), 1, f);
 
-			std::u16string szTagStr(iStrLen, '\0');
-			fread(szTagStr.data(), sizeof(char16_t), iStrLen, f);
+			char16_t* pszTagStr = (char16_t*)std::calloc(iStrLen + 1, sizeof(char16_t));
+			fread(pszTagStr, sizeof(char16_t), iStrLen, f);
+			fwrite(u"{", sizeof(char16_t), 1, fout);
+			fwrite(pszTagStr, sizeof(char16_t), iStrLen, fout);
+			fwrite(u"}", sizeof(char16_t), 1, fout);
 
 			iStrLen = 0;
 			fread(&iStrLen, sizeof(iStrLen), 1, f);
 
-			std::u16string szScreenStr(iStrLen, '\0');
-			fread(szScreenStr.data(), sizeof(char16_t), iStrLen, f);
+			//std::wstring szScreenStr(iStrLen, L'\0');
+			char16_t* pszScreenStr = (char16_t*)std::calloc(iStrLen + 1, sizeof(char16_t));
+			fread(pszScreenStr, sizeof(char16_t), iStrLen, f);
 
-			for (auto&& c : szScreenStr)
-				if (bit_cast<unsigned short>(c) == 10)
-					c = static_cast<char16_t>('\n');
+			for (auto&& c : std::ranges::subrange(pszScreenStr, pszScreenStr + iStrLen + 1))
+				if (bit_cast<std::uint16_t>(c) == (std::uint16_t)10u)
+					c = u'\n';
 
-			g_rgszDic.try_emplace(Convert.to_bytes(szTagStr), Convert.to_bytes(szScreenStr));
+			fwrite(pszScreenStr, sizeof(char16_t), iStrLen, fout);
+			fwrite(u"\n", sizeof(char16_t), 1, fout);
+
+			g_rgszDic.try_emplace(Convert.to_bytes(pszTagStr), Convert.to_bytes(pszScreenStr));
 		}
 
 		std::fclose(f);
 		fmt::print("Successfully loading {} translation entries.\n", g_rgszDic.size());
 
-		if (FILE* FOut = std::fopen("export_vnvs.txt", "wt"); FOut != nullptr)
-		{
-			for (const auto& [szTagStr, szScreenStr] : g_rgszDic)
-				fmt::print(FOut, "{{{}}}{}\n", szTagStr, szScreenStr);
-
-			std::fclose(FOut);
-			fmt::print("Successfully saved translation file as {}.\n", "export_vnvs.txt");
-		}
+		std::fclose(fout);
+		fmt::print("Successfully saved translation file as {}.\n", "export_vnvs.txt");
 	}
 
 	// Link up the anti-trait.
