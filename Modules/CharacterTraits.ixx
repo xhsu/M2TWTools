@@ -2,6 +2,7 @@ module;
 
 #include <deque>
 #include <ranges>
+#include <string_view>
 #include <string>
 #include <unordered_set>
 #include <variant>
@@ -13,13 +14,14 @@ module;
 
 export module CharacterTraits;
 
-using std::string;
-using std::vector;
-using std::variant;
 using std::deque;
+using std::string;
+using std::string_view;
 using std::unordered_set;
+using std::variant;
+using std::vector;
 
-static const unordered_set<string> g_rgszPositiveEffects =
+extern "C++" inline const unordered_set<string_view> g_rgszPositiveEffects =
 {
 	"Ambush",
 	"ArtilleryCommand",
@@ -70,7 +72,7 @@ static const unordered_set<string> g_rgszPositiveEffects =
 	"Violence",
 };
 
-static const unordered_set<string> g_rgszNegativeEffects =
+extern "C++" inline const unordered_set<string_view> g_rgszNegativeEffects =
 {
 	"Squalor",
 	"Unorthodoxy",
@@ -79,13 +81,6 @@ static const unordered_set<string> g_rgszNegativeEffects =
 
 export struct Effect_t final
 {
-	//Effect_t(const string& szType, short iModifier) noexcept : m_Type(szType), m_Modification(iModifier) {}
-	//Effect_t(const Effect_t& rhs) noexcept = default;
-	//Effect_t(Effect_t&& rhs) noexcept = default;
-	//Effect_t& operator=(const Effect_t& rhs) noexcept = default;
-	//Effect_t& operator=(Effect_t&& rhs) noexcept = default;
-	//~Effect_t(void) noexcept = default;
-
 	string m_Type{};
 	short m_Modification;
 

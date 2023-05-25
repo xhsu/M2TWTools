@@ -1,6 +1,8 @@
 ﻿// CharacterTraits.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#include <algorithm>
+#include <array>
 #include <bit>
 #include <charconv>
 #include <codecvt>
@@ -10,10 +12,10 @@
 #include <list>
 #include <ranges>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <tuple>
 
 #include <cassert>
 #include <cstdio>
@@ -22,23 +24,21 @@
 
 #include <experimental/generator>
 
+using std::array;
 using std::bit_cast;
 using std::deque;
 using std::function;
 using std::list;
 using std::string;
 using std::string_view;
+using std::tuple;
 using std::unordered_map;
 using std::variant;
 using std::vector;
-using std::tuple;
 
 using std::experimental::generator;
 
-using namespace std::string_literals;
-using namespace std::string_view_literals;
-
-import UtlWinConsole;
+using namespace std::literals;
 
 import CharacterTraits;
 
@@ -107,8 +107,7 @@ generator<vector<string_view>> ConsoleCommand(void) noexcept
 
 		if (g_szCurCommand.back() == '\n')
 		{
-			auto SplitResult = Split(g_szCurCommand, ", \n\r\t");
-			co_yield vector<string_view>(SplitResult.begin(), SplitResult.end());	// std::ranges::to #UPDATE_AT_CPP23
+			co_yield Split(g_szCurCommand, ", \n\r\t") | std::ranges::to<vector>();
 
 			g_szCurCommand.clear();
 		}
@@ -158,6 +157,14 @@ generator<tuple<char16_t const*, std::int16_t, char16_t const*, std::int16_t>> P
 	free(pszValue);
 
 	co_return;
+}
+
+auto ToUpper(char c) noexcept
+{
+	if (c <= 'z' && c >= 'a')
+		return static_cast<char>(c + ('A' - 'a'));
+
+	return c;
 }
 
 int main(int argc, char* argv[]) noexcept
@@ -315,8 +322,7 @@ int main(int argc, char* argv[]) noexcept
 			{
 				if (sz.contains(' '))
 				{
-					auto us = Split(sz);
-					vector<string_view> rgsz(us.begin(), us.end());	// #UPDATE_AT_CPP23 ranges::to
+					auto const rgsz = Split(sz) | std::ranges::to<vector>();
 
 					g_rgszUnknownTokens.emplace_back(rgsz[0]);
 				}
@@ -459,8 +465,8 @@ int main(int argc, char* argv[]) noexcept
 
 		else if (cmdarg[0] == "name")
 		{
-			static auto const fnTrName = [](const string& szName, const Trait_t& Trait) -> bool { return Trait.m_Name.contains(szName); };
-			static auto const fnTrNameOr = [](const auto& rgszNames, const Trait_t& Trait) -> bool
+			static auto const fnTrName = [](const string& szName, const Trait_t& Trait) noexcept -> bool { return Trait.m_Name.contains(szName); };
+			static auto const fnTrNameOr = [](const auto& rgszNames, const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Name : rgszNames)
 				{
@@ -470,7 +476,7 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnLvName = [](const string& szName, const Trait_t& Trait) -> bool
+			static auto const fnLvName = [](const string& szName, const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -480,7 +486,7 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnLvNameOr = [](const auto& rgszNames, const Trait_t& Trait) -> bool
+			static auto const fnLvNameOr = [](const auto& rgszNames, const Trait_t& Trait) noexcept -> bool
 			{
 
 				for (auto&& Level : Trait.m_Levels)
@@ -492,8 +498,8 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnName = [](const string& szName, const Trait_t& Trait) -> bool { return fnTrName(szName, Trait) || fnLvName(szName, Trait); };
-			static auto const fnNameOr = [](const auto& rgszNames, const Trait_t& Trait) -> bool { return fnTrNameOr(rgszNames, Trait) || fnLvNameOr(rgszNames, Trait); };
+			static auto const fnName = [](const string& szName, const Trait_t& Trait) noexcept -> bool { return fnTrName(szName, Trait) || fnLvName(szName, Trait); };
+			static auto const fnNameOr = [](const auto& rgszNames, const Trait_t& Trait) noexcept -> bool { return fnTrNameOr(rgszNames, Trait) || fnLvNameOr(rgszNames, Trait); };
 
 			if (cmdarg.size() < 2)
 			{
@@ -509,12 +515,12 @@ int main(int argc, char* argv[]) noexcept
 				}
 				else if (cmdarg.size() == 3)
 				{
-					g_rgfnFilters.push_back(std::bind_front(fnTrName, string(cmdarg[2])));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgfnFilters.emplace_back(std::bind_front(fnTrName, string(cmdarg[2])));
 					g_rgszInfoStrings.emplace_back(fmt::format("Must contains: \"{}\" in trait name", cmdarg[2]));
 				}
 				else
 				{
-					g_rgfnFilters.push_back(std::bind_front(fnTrNameOr, vector<string>(cmdarg.begin() + 2, cmdarg.end())));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgfnFilters.emplace_back(std::bind_front(fnTrNameOr, vector<string>(cmdarg.begin() + 2, cmdarg.end())));
 					g_rgszInfoStrings.emplace_back(fmt::format("Must contains one of these strings in its trait name: \"{}\"", fmt::join(cmdarg | std::views::drop(2), "\", \"")));
 				}
 			}
@@ -527,23 +533,23 @@ int main(int argc, char* argv[]) noexcept
 				}
 				else if (cmdarg.size() == 3)
 				{
-					g_rgfnFilters.push_back(std::bind_front(fnLvName, string(cmdarg[2])));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgfnFilters.emplace_back(std::bind_front(fnLvName, string(cmdarg[2])));
 					g_rgszInfoStrings.emplace_back(fmt::format("Must contains: \"{}\" in any of level name", cmdarg[2]));
 				}
 				else
 				{
-					g_rgfnFilters.push_back(std::bind_front(fnLvNameOr, vector<string>(cmdarg.begin() + 2, cmdarg.end())));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+					g_rgfnFilters.emplace_back(std::bind_front(fnLvNameOr, vector<string>(cmdarg.begin() + 2, cmdarg.end())));
 					g_rgszInfoStrings.emplace_back(fmt::format("Must contains one of these strings in its level name: \"{}\"", fmt::join(cmdarg | std::views::drop(2), "\", \"")));
 				}
 			}
 			else if (cmdarg.size() == 2)
 			{
-				g_rgfnFilters.push_back(std::bind_front(fnName, string(cmdarg[1])));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+				g_rgfnFilters.emplace_back(std::bind_front(fnName, string(cmdarg[1])));
 				g_rgszInfoStrings.emplace_back(fmt::format("Must contains: \"{}\" in either trait name or level names.", cmdarg[1]));
 			}
 			else if (cmdarg.size() > 2)
 			{
-				g_rgfnFilters.push_back(std::bind_front(fnNameOr, vector<string>(cmdarg.begin() + 1, cmdarg.end())));	// #UPDATE_AT_CPP23	std::bind_back feels more natural.
+				g_rgfnFilters.emplace_back(std::bind_front(fnNameOr, vector<string>(cmdarg.begin() + 1, cmdarg.end())));
 				g_rgszInfoStrings.emplace_back(fmt::format("Must contains one of these strings in either trait name or level names: \"{}\"", fmt::join(cmdarg | std::views::drop(1), "\", \"")));
 			}
 			else [[unlikely]]
@@ -551,7 +557,7 @@ int main(int argc, char* argv[]) noexcept
 		}
 		else if (cmdarg[0] == "prop")
 		{
-			static auto const fnLesser = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			static auto const fnLesser = [](string szProperty, short iModifer, const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -567,7 +573,7 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnLesserOrEqual = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			static auto const fnLesserOrEqual = [](string szProperty, short iModifer, const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -583,7 +589,7 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnEqual = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			static auto const fnEqual = [](string szProperty, short iModifer, const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -599,7 +605,7 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnGreaterOrEqual = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			static auto const fnGreaterOrEqual = [](string szProperty, short iModifer, const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -615,7 +621,7 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnGreater = [](string szProperty, short iModifer, const Trait_t& Trait) -> bool
+			static auto const fnGreater = [](string szProperty, short iModifer, const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -643,27 +649,27 @@ int main(int argc, char* argv[]) noexcept
 
 			if (cmdarg[2] == "<")
 			{
-				g_rgfnFilters.push_back(std::bind_front(fnLesser, string(cmdarg[1]), iCompare));
+				g_rgfnFilters.emplace_back(std::bind_front(fnLesser, string(cmdarg[1]), iCompare));
 				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and lesser than {}.", cmdarg[1], iCompare));
 			}
 			else if (cmdarg[2] == "<=")
 			{
-				g_rgfnFilters.push_back(std::bind_front(fnLesserOrEqual, string(cmdarg[1]), iCompare));
+				g_rgfnFilters.emplace_back(std::bind_front(fnLesserOrEqual, string(cmdarg[1]), iCompare));
 				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and lesser than or equals to {}.", cmdarg[1], iCompare));
 			}
 			else if (cmdarg[2] == "==")
 			{
-				g_rgfnFilters.push_back(std::bind_front(fnEqual, string(cmdarg[1]), iCompare));
+				g_rgfnFilters.emplace_back(std::bind_front(fnEqual, string(cmdarg[1]), iCompare));
 				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and equals to {}.", cmdarg[1], iCompare));
 			}
 			else if (cmdarg[2] == ">=")
 			{
-				g_rgfnFilters.push_back(std::bind_front(fnGreaterOrEqual, string(cmdarg[1]), iCompare));
+				g_rgfnFilters.emplace_back(std::bind_front(fnGreaterOrEqual, string(cmdarg[1]), iCompare));
 				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and greater than or equals to {}.", cmdarg[1], iCompare));
 			}
 			else if (cmdarg[2] == ">")
 			{
-				g_rgfnFilters.push_back(std::bind_front(fnGreater, string(cmdarg[1]), iCompare));
+				g_rgfnFilters.emplace_back(std::bind_front(fnGreater, string(cmdarg[1]), iCompare));
 				g_rgszInfoStrings.emplace_back(fmt::format("Containing property(ies) that have effect with string \"{}\" and greater than {}.", cmdarg[1], iCompare));
 			}
 			else
@@ -674,16 +680,18 @@ int main(int argc, char* argv[]) noexcept
 					fmt::print(fg(fmt::color::red), "Use '==' as equality operator instead.\n");
 				else if (cmdarg[2] == "<>" || cmdarg[2] == "!=")
 					fmt::print(fg(fmt::color::red), "Operator 'not equal' does not make sense here.\n");
+				else if (cmdarg[2] == "<=>")
+					fmt::print(fg(fmt::color::red), "Spaceship operator? Seriously? What's wrong with you?\n");
 
 				continue;
 			}
 
-			//g_rgfnFilters.push_back(fn);
+			//g_rgfnFilters.emplace_back(fn);
 			//g_rgszInfoStrings.emplace_back("Must contains only positive effect on all level(s).");
 		}
 		else if (cmdarg[0] == "epithet")
 		{
-			static auto const fnHasEpithet = [](const Trait_t& Trait) -> bool
+			static auto const fnHasEpithet = [](const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -693,7 +701,7 @@ int main(int argc, char* argv[]) noexcept
 
 				return false;
 			};
-			static auto const fnHasNoEpithet = [](const Trait_t& Trait) -> bool
+			static auto const fnHasNoEpithet = [](const Trait_t& Trait) noexcept -> bool
 			{
 				for (auto&& Level : Trait.m_Levels)
 				{
@@ -703,22 +711,182 @@ int main(int argc, char* argv[]) noexcept
 
 				return true;
 			};
+			static auto const fnEpithetIs = [](const Trait_t &Trait, string szWhat) noexcept -> bool
+			{
+				for (auto &&Level : Trait.m_Levels)
+				{
+					if (Level.m_Epithet.contains(szWhat))
+						return true;
+				}
+
+				return false;
+			};
 
 			if (cmdarg.size() == 1 || !_strnicmp(cmdarg[1].data(), "true", cmdarg[1].length()))
 			{
-				g_rgfnFilters.push_back(fnHasEpithet);
+				g_rgfnFilters.emplace_back(fnHasEpithet);
 				g_rgszInfoStrings.emplace_back("Mush have epithet associated with.");
 			}
 			else if (!_strnicmp(cmdarg[1].data(), "false", cmdarg[1].length()))
 			{
-				g_rgfnFilters.push_back(fnHasNoEpithet);
+				g_rgfnFilters.emplace_back(fnHasNoEpithet);
 				g_rgszInfoStrings.emplace_back("Mush have no epithet associated with.");
+			}
+			else if (cmdarg.size() == 2)
+			{
+				g_rgfnFilters.emplace_back(std::bind_back(fnEpithetIs, string(cmdarg[1])));
+				g_rgszInfoStrings.emplace_back(fmt::format("Mush have an epithet containing \"{}\"", cmdarg[1]));
 			}
 			else
 			{
-				fmt::print(fg(fmt::color::red), "Command \"epithet\" have an optional argument ['true'|'false'].\n");
+				fmt::print(fg(fmt::color::red), "Command \"epithet\" have an optional argument ['true' | 'false' | 'String to search'].\n");
 				continue;
 			}
+		}
+		else if (cmdarg[0] == "eval")
+		{
+			static constexpr array rgszScoreNames{ "NEGATIVE"sv, "LEAN_NEGATIVE"sv, "NEUTER"sv, "LEAN_POSITIVE"sv, "POSITIVE"sv, };
+
+			static auto const fnEvalLesser = [](Trait_t const &Trait, std::uint8_t iScore) noexcept -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					if (Level.Evaluate() < iScore)
+						return true;
+				}
+
+				return false;
+			};
+			static auto const fnEvalLesserOrEqual = [](Trait_t const &Trait, std::uint8_t iScore) noexcept -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					if (Level.Evaluate() <= iScore)
+						return true;
+				}
+
+				return false;
+			};
+			static auto const fnEvalEqual = [](Trait_t const &Trait, std::uint8_t iScore) noexcept -> bool
+			{
+				for (auto &&Level : Trait.m_Levels)
+				{
+					if (Level.Evaluate() == iScore)
+						return true;
+				}
+
+				return false;
+			};
+			static auto const fnEvalGreaterOrEqual = [](Trait_t const &Trait, std::uint8_t iScore) noexcept -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					if (Level.Evaluate() >= iScore)
+						return true;
+				}
+
+				return false;
+			};
+			static auto const fnEvalGreater = [](Trait_t const &Trait, std::uint8_t iScore) noexcept -> bool
+			{
+				for (auto&& Level : Trait.m_Levels)
+				{
+					if (Level.Evaluate() > iScore)
+						return true;
+				}
+
+				return false;
+			};
+
+			if (cmdarg.size() != 3)
+			{
+				fmt::print(fg(fmt::color::red), "Command \"eval\" must have a comparision sign and a value as arguments.\n");
+				continue;
+			}
+			else
+			{
+				std::uint8_t iScore{};
+
+				for (; iScore < 5; ++iScore)
+				{
+					if (std::ranges::starts_with(rgszScoreNames[iScore], cmdarg[2], {}, {}, ToUpper))
+						break;
+				}
+
+				if (iScore >= 5)
+				{
+					fmt::print(fg(fmt::color::red), "The value must be one of ['{}']\n", fmt::join(rgszScoreNames, "', '"));
+					continue;
+				}
+
+				if (cmdarg[1] == "<")
+				{
+					g_rgfnFilters.emplace_back(std::bind_back(fnEvalLesser, iScore));
+					g_rgszInfoStrings.emplace_back(fmt::format("Any level-wise evaluation result worse than {}.", rgszScoreNames[iScore]));
+				}
+				else if (cmdarg[1] == "<=")
+				{
+					g_rgfnFilters.emplace_back(std::bind_back(fnEvalLesserOrEqual, iScore));
+					g_rgszInfoStrings.emplace_back(fmt::format("Any level-wise evaluation result worse than or equal to {}.", rgszScoreNames[iScore]));
+				}
+				else if (cmdarg[1] == "==")
+				{
+					g_rgfnFilters.emplace_back(std::bind_back(fnEvalEqual, iScore));
+					g_rgszInfoStrings.emplace_back(fmt::format("Any level-wise evaluation result equal to {}.", rgszScoreNames[iScore]));
+				}
+				else if (cmdarg[1] == ">=")
+				{
+					g_rgfnFilters.emplace_back(std::bind_back(fnEvalGreaterOrEqual, iScore));
+					g_rgszInfoStrings.emplace_back(fmt::format("Any level-wise evaluation result better than or equal to {}.", rgszScoreNames[iScore]));
+				}
+				else if (cmdarg[1] == ">")
+				{
+					g_rgfnFilters.emplace_back(std::bind_back(fnEvalGreater, iScore));
+					g_rgszInfoStrings.emplace_back(fmt::format("Any level-wise evaluation result better than {}.", rgszScoreNames[iScore]));
+				}
+				else
+				{
+					fmt::print(fg(fmt::color::red), "Operator '{}' does not supported.\n", cmdarg[1]);
+
+					if (cmdarg[1] == "=")
+						fmt::print(fg(fmt::color::red), "Use '==' as equality operator instead.\n");
+					else if (cmdarg[1] == "<>" || cmdarg[1] == "!=")
+						fmt::print(fg(fmt::color::red), "Operator 'not equal' does not make sense here.\n");
+					else if (cmdarg[1] == "<=>")
+						fmt::print(fg(fmt::color::red), "Spaceship operator? Seriously? What's wrong with you?\n");
+
+					continue;
+				}
+			}
+		}
+		else if (cmdarg[0] == "char")
+		{
+			static constexpr array rgszCharacterType{ "admiral"sv, "all"sv, "assassin"sv, "diplomat"sv, "family"sv, "heretic"sv, "inquisitor"sv, "merchant"sv, "priest"sv, "princess"sv, "spy"sv, "witch"sv };
+			static const auto fnChType = [](Trait_t const &Trait, string szType) noexcept -> bool { return std::ranges::contains(Trait.m_Character, szType); };	// warpper for the sake of the lifetime of 'string' arg.
+
+			if (cmdarg.size() != 2)
+			{
+				fmt::print(fg(fmt::color::red), "Command \"char\" must use with an argument indicating character type.\n");
+				continue;
+			}
+
+			bool bFind{};
+			string szSnapped{ cmdarg[1] };
+			for (auto &&s : rgszCharacterType)
+			{
+				if (std::ranges::contains_subrange(s, szSnapped, {}, ToUpper, ToUpper))
+				{
+					szSnapped = (string)s;
+					bFind = true;
+					break;
+				}
+			}
+
+			if (!bFind)
+				fmt::print(fg(fmt::color::gold), "Warning: The character type you are inputting could be wrong.\n - Expecting: [{}]\n", fmt::join(rgszCharacterType, ", "));
+
+			g_rgfnFilters.emplace_back(std::bind_back(fnChType, szSnapped));
+			g_rgszInfoStrings.emplace_back(fmt::format("Must be compatible with '{}' character type", szSnapped));
 		}
 
 		else if (cmdarg[0] == "pop")
@@ -733,10 +901,25 @@ int main(int argc, char* argv[]) noexcept
 				g_rgszInfoStrings.pop_back();
 			}
 		}
+		else if (cmdarg[0] == "inspect")
+		{
+			system("cls");
+
+			if (g_rgszInfoStrings.empty())
+			{
+				fmt::print("No activated filter.\n");
+			}
+			else
+			{
+				fmt::print("Current activated filter{}:\n", g_rgszInfoStrings.size() == 1 ? "" : "s");
+				for (const auto &szInfo : g_rgszInfoStrings)
+					fmt::print(fg(fmt::color::slate_gray), " - {}\n", szInfo);
+			}
+		}
 		else if (cmdarg[0] == "list")
 		{
-			clear_console();
-			fmt::print("Listing trait(s) under filter(s):\n");
+			system("cls");
+			fmt::print("Listing trait(s) under filter{}:\n", g_rgszInfoStrings.size() == 1 ? "" : "s");
 			for (const auto& szInfo : g_rgszInfoStrings)
 				fmt::print(fg(fmt::color::slate_gray), " - {}\n", szInfo);
 
@@ -756,11 +939,11 @@ int main(int argc, char* argv[]) noexcept
 		{
 			g_rgfnFilters.clear();
 			g_rgszInfoStrings.clear();
-			clear_console();
+			system("cls");
 		}
 		else if (cmdarg[0] == "clear")
 		{
-			clear_console();
+			system("cls");
 		}
 		else
 			fmt::print(fg(fmt::color::red), "Unknown command: \"{}\".\n", cmdarg[0]);
