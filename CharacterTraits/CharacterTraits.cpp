@@ -430,9 +430,6 @@ int main(int argc, char* argv[]) noexcept
 		fnTranslate(&Trait.m_Name);
 	}
 
-	//for (auto&& Trigger : g_Triggers)
-	//	Trigger.Print();
-
 #pragma region Handle unparsed tokens
 	g_rgszUnknownTokens.sort();
 	g_rgszUnknownTokens.unique();
@@ -440,18 +437,6 @@ int main(int argc, char* argv[]) noexcept
 	for (const auto& Token : g_rgszUnknownTokens)
 		fmt::print(fg(fmt::color::dark_golden_rod), "Unparsed token: {}\n", Token);
 #pragma endregion Handle unparsed tokens
-
-	//list<string> efx;
-	//for (const auto& Trait : g_Traits)
-	//{
-	//	for (const auto& Level : Trait.m_Levels)
-	//		for (const auto& Effect : Level.m_Effects)
-	//			if (std::find(efx.cbegin(), efx.cend(), Effect.first) == efx.cend())
-	//				efx.emplace_back(Effect.first);
-	//}
-	//efx.sort();
-	//for (auto&& Effect : efx)
-	//	fmt::print("{}\n", Effect);
 
 	for (auto&& cmdarg : ConsoleCommand())
 	{
@@ -887,6 +872,26 @@ int main(int argc, char* argv[]) noexcept
 
 			g_rgfnFilters.emplace_back(std::bind_back(fnChType, szSnapped));
 			g_rgszInfoStrings.emplace_back(fmt::format("Must be compatible with '{}' character type", szSnapped));
+		}
+		else if (cmdarg[0] == "hidden")
+		{
+			static auto const fnHidden = [](Trait_t const &Trait, bool bTest) noexcept -> bool { return Trait.m_Hidden == bTest; };
+
+			if (cmdarg.size() == 1 || !_strnicmp(cmdarg[1].data(), "true", cmdarg[1].length()))
+			{
+				g_rgfnFilters.emplace_back(std::bind_back(fnHidden, true));
+				g_rgszInfoStrings.emplace_back("Mush be an hidden trait.");
+			}
+			else if (!_strnicmp(cmdarg[1].data(), "false", cmdarg[1].length()))
+			{
+				g_rgfnFilters.emplace_back(std::bind_back(fnHidden, false));
+				g_rgszInfoStrings.emplace_back("Mush not be an hidden trait.");
+			}
+			else
+			{
+				fmt::print(fg(fmt::color::red), "Command \"hidden\" have only one optional argument ['true' | 'false'].\n");
+				continue;
+			}
 		}
 
 		else if (cmdarg[0] == "pop")
