@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Program.cpp" />
+    <ClCompile Include="..\..\imgui\imgui.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\imgui\imgui_demo.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\imgui\imgui_draw.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\imgui\imgui_tables.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\imgui\imgui_widgets.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\imgui\misc\cpp\imgui_stdlib.cpp">
+      <Filter>ImGui\misc\cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>ImGui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="stb_impl.cpp">
+      <Filter>stb</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageWindow.cpp" />
+    <ClCompile Include="..\..\imgui\backends\imgui_impl_glfw.cpp">
+      <Filter>ImGui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\glad\src\glad.c">
+      <Filter>glad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\imgui\misc\freetype\imgui_freetype.cpp">
+      <Filter>ImGui\misc\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="GameInterfaceFile.cpp" />
+    <ClCompile Include="..\tinyxml2\tinyxml2.cpp">
+      <Filter>tinyxml2</Filter>
+    </ClCompile>
+    <ClCompile Include="Image.cpp" />
+    <ClCompile Include="OpenFile.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="ImGui">
+      <UniqueIdentifier>{4619e066-4fba-4167-8ce8-3b365425a68b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui\misc">
+      <UniqueIdentifier>{19dc8731-4d1c-4e4c-b32c-e03410b6fb59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui\misc\debugger">
+      <UniqueIdentifier>{833c680d-5d92-4173-94ab-7f6c5f558a10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui\misc\cpp">
+      <UniqueIdentifier>{4ebea085-aab0-4eb7-a34b-b28621f4d363}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui\backends">
+      <UniqueIdentifier>{639831ac-0575-43ab-b6d8-cfa01f7cb280}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="stb">
+      <UniqueIdentifier>{306d8bbd-3961-429b-a1fe-c4e19d92a262}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="glad">
+      <UniqueIdentifier>{9cbdd6a4-cce0-4537-b01d-1e34c3f9631b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui\misc\freetype">
+      <UniqueIdentifier>{fd2ee7ee-0a26-4324-a63e-3c3e11ad75e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tinyxml2">
+      <UniqueIdentifier>{8fbc412c-cc27-4c2e-8f3a-c9a1f83c0aa1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\imgui\imconfig.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\imgui.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\imgui_internal.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\imstb_rectpack.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\imstb_textedit.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\imstb_truetype.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\misc\cpp\imgui_stdlib.h">
+      <Filter>ImGui\misc\cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\backends\imgui_impl_opengl3.h">
+      <Filter>ImGui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\backends\imgui_impl_opengl3_loader.h">
+      <Filter>ImGui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGuiConfig.hpp" />
+    <ClInclude Include="..\..\imgui\backends\imgui_impl_glfw.h">
+      <Filter>ImGui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\glad\include\glad\glad.h">
+      <Filter>glad</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\imgui\misc\freetype\imgui_freetype.h">
+      <Filter>ImGui\misc\freetype</Filter>
+    </ClInclude>
+    <ClInclude Include="GameInterfaceFile.hpp" />
+    <ClInclude Include="..\tinyxml2\tinyxml2.h">
+      <Filter>tinyxml2</Filter>
+    </ClInclude>
+    <ClInclude Include="Image.hpp" />
+    <ClInclude Include="OpenFile.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis">
+      <Filter>ImGui\misc\debugger</Filter>
+    </Natvis>
+  </ItemGroup>
+</Project>
