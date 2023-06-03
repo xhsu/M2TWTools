@@ -154,6 +154,7 @@
     <ClCompile Include="..\..\imgui\misc\freetype\imgui_freetype.cpp" />
     <ClCompile Include="..\glad\src\glad.c" />
     <ClCompile Include="..\tinyxml2\tinyxml2.cpp" />
+    <ClCompile Include="Canvas.cpp" />
     <ClCompile Include="GameInterfaceFile.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="ImageWindow.cpp" />
@@ -175,6 +176,7 @@
     <ClInclude Include="..\..\imgui\misc\freetype\imgui_freetype.h" />
     <ClInclude Include="..\glad\include\glad\glad.h" />
     <ClInclude Include="..\tinyxml2\tinyxml2.h" />
+    <ClInclude Include="Canvas.hpp" />
     <ClInclude Include="GameInterfaceFile.hpp" />
     <ClInclude Include="Image.hpp" />
     <ClInclude Include="ImGuiConfig.hpp" />

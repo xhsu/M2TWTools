@@ -2,12 +2,10 @@
 
 #include "Image.hpp"
 
-using std::string_view;
-
-bool Image_t::LoadFromFile(string_view sz) noexcept
+bool Image_t::LoadFromFile(std::filesystem::path const& Path) noexcept
 {
 	// Load from file
-	auto const image_data = stbi_load(sz.data(), &m_iWidth, &m_iHeight, nullptr, 4);
+	auto const image_data = stbi_load(Path.u8string().c_str(), &m_iWidth, &m_iHeight, nullptr, 4);
 
 	if (!image_data)
 		return false;
@@ -28,6 +26,9 @@ bool Image_t::LoadFromFile(string_view sz) noexcept
 #endif
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_iWidth, m_iHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
 	stbi_image_free(image_data);
+
+	if (!m_Precache.contains(Path))
+		m_Precache[Path] = Cache_t{ m_iTexture, m_iWidth, m_iHeight };
 
 	return true;
 }

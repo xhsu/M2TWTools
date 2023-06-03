@@ -42,6 +42,7 @@
     </ClCompile>
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="OpenFile.cpp" />
+    <ClCompile Include="Canvas.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ImGui">
@@ -116,6 +117,7 @@
     </ClInclude>
     <ClInclude Include="Image.hpp" />
     <ClInclude Include="OpenFile.hpp" />
+    <ClInclude Include="Canvas.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis">

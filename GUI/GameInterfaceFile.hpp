@@ -3,6 +3,7 @@
 #include <tinyxml2.h>
 
 #include <filesystem>
+#include <set>
 #include <vector>
 
 #include "Image.hpp"
@@ -23,6 +24,7 @@ struct Sprite_t final
 
 struct GameInterfaceFile_t final
 {
+	GameInterfaceFile_t() noexcept = default;
 	explicit GameInterfaceFile_t(std::filesystem::path const& Path) noexcept { Import(Path); }
 
 	GameInterfaceFile_t(GameInterfaceFile_t &&) noexcept = default;
@@ -42,6 +44,10 @@ struct GameInterfaceFile_t final
 
 	// Methods
 
+	std::set<std::filesystem::path> ImageFiles() const noexcept;
+
 	void Import(std::filesystem::path const &Path) noexcept;
 	void Export(tinyxml2::XMLDocument *xml) const noexcept;
+
+	inline void Clear() noexcept { m_Version = 6; m_EnumerationName.clear(); m_rgSprites.clear(); }
 };

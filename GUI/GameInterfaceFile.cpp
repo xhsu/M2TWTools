@@ -4,25 +4,35 @@
 #include <stb_image.h>
 
 #include <array>
-#include <ranges>
-#include <vector>
-#include <tuple>
-#include <set>
 #include <map>
+#include <ranges>
+#include <set>
+#include <tuple>
+#include <vector>
 
 namespace fs = std::filesystem;
 
 using namespace std::literals;
 
 using std::array;
-using std::string;
-using std::vector;
-using std::tuple;
-using std::set;
 using std::map;
+using std::set;
+using std::string;
+using std::tuple;
+using std::vector;
+
+set<fs::path> GameInterfaceFile_t::ImageFiles() const noexcept
+{
+	return
+		m_rgSprites
+		| std::views::transform([](Sprite_t const &spr) noexcept { return spr.m_Path; })
+		| std::ranges::to<set>();
+}
 
 void GameInterfaceFile_t::Import(fs::path const& Path) noexcept
 {
+	Clear();
+
 	tinyxml2::XMLDocument xml;
 	if (xml.LoadFile(Path.u8string().c_str()) != tinyxml2::XML_SUCCESS) [[unlikely]]
 	{
@@ -138,16 +148,13 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 	auto pName = pRoot->InsertNewChildElement("enumeration_name");
 	pName->SetText(m_EnumerationName.c_str());
 
-	auto const rgTexData =
-		m_rgSprites
-		| std::views::transform([](Sprite_t const &spr) noexcept { return spr.m_Path; })
-		| std::ranges::to<set>();
+	auto const rgszImages = ImageFiles();
 
 	auto pPages = pRoot->InsertNewChildElement("texture_pages");
-	pPages->SetAttribute("count", rgTexData.size());
+	pPages->SetAttribute("count", rgszImages.size());
 
 	for (auto &&[szFileName, iWidth, iHeight] :
-		rgTexData
+		rgszImages
 		| std::views::transform(
 			[](fs::path const& Path) noexcept
 			{
@@ -169,7 +176,7 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 
 	// #UPDATE_AT_CPP23 try views::enumerate and to a map?
 	map<fs::path, int> Mapping{};
-	for (int i = 0; auto && Path : rgTexData)
+	for (int i = 0; auto && Path : rgszImages)
 		Mapping[Path] = i++;
 
 	auto pSprites = pRoot->InsertNewChildElement("sprites");

@@ -14,9 +14,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
-extern void ImageWindowInit() noexcept;
-extern void ImageWindowDisplay() noexcept;
+#include "Canvas.hpp"
 
+extern void ImageWindowDisplay() noexcept;
 extern void OperationWindowDisplay() noexcept;
 
 // Main code
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) noexcept
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	// my init
-	ImageWindowInit();
+	Canvas::Initialize();
 
 	// Load Fonts
 	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
