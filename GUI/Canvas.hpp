@@ -20,6 +20,7 @@ namespace Canvas
 	// Update flags
 	inline bool m_UpdateCursor{};
 	inline ImVec2 m_vecCursorPos{};
+	inline bool m_ShouldDrawGizmos{ true };
 	inline std::vector<rect_t> m_Gizmos{};
 
 	void Update() noexcept;

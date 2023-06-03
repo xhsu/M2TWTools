@@ -1,6 +1,5 @@
 
 #include <glad/glad.h>
-#include <stb_image.h>
 
 #include <fmt/core.h>
 
@@ -16,6 +15,7 @@
 #include "Image.hpp"
 #include "OpenFile.hpp"
 
+using std::string;
 using std::string_view;
 using std::vector;
 
@@ -23,11 +23,11 @@ namespace fs = std::filesystem;
 
 vector<Image_t> g_rgImages;
 GameInterfaceFile_t g_SelectedXML;
+ImVec2 g_vecScope(0, 0);
+string g_szImageTooltip;
 
 void ImageWindowDisplay() noexcept
 {
-	//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{});
-
 	ImGui::Begin("OpenGL Texture Text");
 
 	if (ImGui::BeginTabBar("Images", ImGuiTabBarFlags_FittingPolicyScroll))
@@ -37,11 +37,20 @@ void ImageWindowDisplay() noexcept
 			if (ImGui::BeginTabItem(Image.Name().c_str()))
 			{
 				g_pActivatedImage = &Image;
-				Canvas::m_vecCursorPos = ImGui::GetMousePos() - ImGui::GetCursorScreenPos();
+				Canvas::m_vecCursorPos = ImGui::GetMousePos() - ImGui::GetCursorScreenPos() - ImVec2{ ImGui::GetScrollX(), ImGui::GetScrollY() };
 
-				ImGui::Image((void *)(intptr_t)g_iFrameTexture, ImVec2(CANVAS_WIDTH, CANVAS_HEIGHT), ImVec2{}, ImVec2{0.5f, 0.5f});
-				if (ImGui::IsItemHovered())
+				ImGui::Image((void *)(intptr_t)g_iFrameTexture, ImVec2(CANVAS_WIDTH, CANVAS_HEIGHT), g_vecScope, g_vecScope + ImVec2{ 0.5f, 0.5f });
+				if (Canvas::m_UpdateCursor = ImGui::IsItemHovered())
+				{
 					ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+
+					// Sign reversed for human sense.
+					g_vecScope.x = std::clamp(g_vecScope.x - ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).x * 0.5f / CANVAS_WIDTH, 0.f, 0.5f);
+					g_vecScope.y = std::clamp(g_vecScope.y - ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).y * 0.5f / CANVAS_WIDTH, 0.f, 0.5f);
+
+					// Clear drag data.
+					ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Middle] = ImGui::GetIO().MousePos;
+				}
 
 				ImGui::EndTabItem();
 			}
@@ -52,10 +61,16 @@ void ImageWindowDisplay() noexcept
 
 	ImGui::End();
 
-	//ImGui::PopStyleVar();
+	rect_t const RecCurrentCanvas{
+		(int32_t)std::roundf(g_vecScope.x * CANVAS_WIDTH),	(int32_t)std::roundf(std::min(g_vecScope.x + 0.5f, 1.f) * CANVAS_WIDTH),		// l, r
+		(int32_t)std::roundf(g_vecScope.y * CANVAS_HEIGHT),	(int32_t)std::roundf(std::min(g_vecScope.y + 0.5f, 1.f) * CANVAS_HEIGHT),	// t, b
+	};
+
+	Canvas::m_vecCursorPos *= 0.5f;
+	Canvas::m_vecCursorPos += ImVec2{(float)RecCurrentCanvas.m_left, (float)RecCurrentCanvas.m_top};
 
 	// Canvas will update post-render on itself.
-	Canvas::m_UpdateCursor = Canvas::m_vecCursorPos.x > 0 && Canvas::m_vecCursorPos.x < CANVAS_WIDTH && Canvas::m_vecCursorPos.y > 0 && Canvas::m_vecCursorPos.y < CANVAS_HEIGHT;
+
 	Canvas::m_Gizmos =
 		g_SelectedXML.m_rgSprites
 		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
@@ -70,6 +85,23 @@ void OperationWindowDisplay() noexcept
 	ImGui::Begin("Actions");
 
 	{
+		ImGui::TextUnformatted("Selected element:");
+
+		bool bAny{ false };
+		for (auto &&sz :
+			g_SelectedXML.m_rgSprites
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
+			| std::views::transform([](Sprite_t const &spr) noexcept -> string const& { return spr.m_Name; })
+			)
+		{
+			ImGui::BulletText(sz.c_str());
+			bAny = true;
+		}
+
+		if (!bAny)
+			ImGui::BulletText("[None]");
+
 		if (ImGui::Button("Open"))
 		{
 			if (auto pPath = Win32_OpenFileDialog(L"M2TW UI (*.xml)\0*.xml\0"); pPath)
@@ -91,6 +123,11 @@ void OperationWindowDisplay() noexcept
 				xml.SaveFile(OutPath.u8string().c_str());
 			}
 		}
+
+		ImGui::Checkbox("Show gizmos", &Canvas::m_ShouldDrawGizmos);
+
+		ImGui::SliderFloat("X", &g_vecScope.x, 0.f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Y", &g_vecScope.y, 0.f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 	}
 
 	ImGui::End();

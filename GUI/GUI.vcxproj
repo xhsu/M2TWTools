@@ -160,7 +160,9 @@
     <ClCompile Include="ImageWindow.cpp" />
     <ClCompile Include="OpenFile.cpp" />
     <ClCompile Include="Program.cpp" />
+    <ClCompile Include="Shader.cpp" />
     <ClCompile Include="stb_impl.cpp" />
+    <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\imgui\backends\imgui_impl_glfw.h" />
@@ -181,6 +183,8 @@
     <ClInclude Include="Image.hpp" />
     <ClInclude Include="ImGuiConfig.hpp" />
     <ClInclude Include="OpenFile.hpp" />
+    <ClInclude Include="Shader.hpp" />
+    <ClInclude Include="Timer.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis" />

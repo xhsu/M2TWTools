@@ -43,6 +43,8 @@
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="OpenFile.cpp" />
     <ClCompile Include="Canvas.cpp" />
+    <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ImGui">
@@ -118,6 +120,8 @@
     <ClInclude Include="Image.hpp" />
     <ClInclude Include="OpenFile.hpp" />
     <ClInclude Include="Canvas.hpp" />
+    <ClInclude Include="Timer.hpp" />
+    <ClInclude Include="Shader.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis">

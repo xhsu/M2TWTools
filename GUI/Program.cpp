@@ -15,6 +15,7 @@
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
 #include "Canvas.hpp"
+#include "Timer.hpp"
 
 extern void ImageWindowDisplay() noexcept;
 extern void OperationWindowDisplay() noexcept;
@@ -66,9 +67,10 @@ int main(int argc, char *argv[]) noexcept
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO(); (void)io;
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	ImGuiIO &io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;		// Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;		// Enable Gamepad Controls
+	io.ConfigWindowsMoveFromTitleBarOnly = true;				// We need to drag images.
 
 	// Setup Dear ImGui style
 	//ImGui::StyleColorsDark();
@@ -80,6 +82,7 @@ int main(int argc, char *argv[]) noexcept
 
 	// my init
 	Canvas::Initialize();
+	Timer::Start();
 
 	// Load Fonts
 	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.

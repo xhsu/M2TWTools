@@ -1,5 +1,6 @@
 #pragma once
 
+#include <imgui.h>
 #include <tinyxml2.h>
 
 #include <filesystem>
@@ -11,6 +12,15 @@
 struct rect_t final
 {
 	int32_t m_left{}, m_right{}, m_top{}, m_bottom{};
+
+	inline bool IsPointIn(ImVec2 pos) const noexcept
+	{
+		return
+			m_left <= pos.x && pos.x <= m_right
+			&&
+			m_top <= pos.y && pos.y <= m_bottom	// reversed Y axis.
+			;
+	}
 };
 
 struct Sprite_t final
@@ -50,4 +60,5 @@ struct GameInterfaceFile_t final
 	void Export(tinyxml2::XMLDocument *xml) const noexcept;
 
 	inline void Clear() noexcept { m_Version = 6; m_EnumerationName.clear(); m_rgSprites.clear(); }
+	[[nodiscard]] inline bool Empty() noexcept { return m_EnumerationName.empty() || m_rgSprites.empty(); }
 };

@@ -1,4 +1,45 @@
 #include "Canvas.hpp"
+#include "Timer.hpp"
+
+#include <tuple>
+
+#include <fmt/color.h>
+
+using std::tuple;
+
+tuple<double, double, double> HueToRGB(double h) noexcept
+{
+	if (h >= 360.0)
+		h = 0.0;
+
+	h /= 60.0;
+
+	auto i = static_cast<long>(h);
+	auto t = h - i;
+	auto q = 1.0 - t;
+
+	switch (i)
+	{
+	default:
+	case 0:
+		return tuple{ 1, t, 0 };
+
+	case 1:
+		return tuple{ q, 1, 0 };
+
+	case 2:
+		return tuple{ 0, 1, t };
+
+	case 3:
+		return tuple{ 0, q, 1 };
+
+	case 4:
+		return tuple{ t, 0, 1 };
+
+	case 5:
+		return tuple{ 1, 0, q };
+	}
+}
 
 void Canvas::Initialize() noexcept
 {
@@ -70,8 +111,11 @@ void Canvas::Update() noexcept
 
 	if (m_UpdateCursor)
 	{
+		auto const s = (std::sin(Timer::Now()) + 1) / 2.0;
+		auto const [r, g, b] = HueToRGB(s * 360);
+
 		glDisable(GL_TEXTURE_2D);
-		glColor3f(1, 1, 1);
+		glColor3d(r, g, b);
 
 		glBegin(GL_QUADS);
 		glVertex2d(m_vecCursorPos.x - 1, m_vecCursorPos.y - 16);
@@ -90,20 +134,23 @@ void Canvas::Update() noexcept
 		glEnable(GL_TEXTURE_2D);
 	}
 
-	for (auto &&Rect : m_Gizmos)
+	if (m_ShouldDrawGizmos)
 	{
-		glDisable(GL_TEXTURE_2D);
+		for (auto &&Rect : m_Gizmos)
+		{
+			glDisable(GL_TEXTURE_2D);
 
-		glColor3f(1, 0, 0);
+			glColor3f(1, 0, 0);
 
-		glBegin(GL_LINE_LOOP);
-		glVertex2d(Rect.m_left + 1, Rect.m_top + 1);	// #INVESTIGATE weird offset.
-		glVertex2d(Rect.m_right, Rect.m_top + 1);
-		glVertex2d(Rect.m_right, Rect.m_bottom);
-		glVertex2d(Rect.m_left + 1, Rect.m_bottom);
-		glEnd();
+			glBegin(GL_LINE_LOOP);
+			glVertex2d(Rect.m_left, Rect.m_top);	// #INVESTIGATE weird offset.
+			glVertex2d(Rect.m_right + 1, Rect.m_top);
+			glVertex2d(Rect.m_right + 1, Rect.m_bottom + 1);
+			glVertex2d(Rect.m_left, Rect.m_bottom + 1);
+			glEnd();
 
-		glEnable(GL_TEXTURE_2D);
+			glEnable(GL_TEXTURE_2D);
+		}
 	}
 
 	//glDisable(GL_TEXTURE_2D);
@@ -125,6 +172,5 @@ void Canvas::Update() noexcept
 	// LUNA: unbind FBO such that we can render other things.
 	// https://stackoverflow.com/questions/9742840/what-are-the-steps-necessary-to-render-my-scene-to-a-framebuffer-objectfbo-and
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 }
 
