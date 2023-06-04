@@ -24,7 +24,28 @@ namespace fs = std::filesystem;
 vector<Image_t> g_rgImages;
 GameInterfaceFile_t g_SelectedXML;
 ImVec2 g_vecScope(0, 0);
-string g_szImageTooltip;
+
+void DockingSpaceDisplay() noexcept
+{
+	static bool show_demo_window = false;
+
+	if (show_demo_window)
+		ImGui::ShowDemoWindow(&show_demo_window);
+
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("Application"))
+		{
+			ImGui::MenuItem("Demo Window", nullptr, &show_demo_window);
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndMainMenuBar();
+	}
+
+	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_AutoHideTabBar);
+
+}
 
 void ImageWindowDisplay() noexcept
 {
