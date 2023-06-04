@@ -29,7 +29,7 @@ struct rect_t final
 struct Sprite_t final
 {
 	std::string m_Name{};
-	std::filesystem::path m_Path{};
+	Image_t m_Image{};
 	rect_t m_Rect{};
 	int32_t m_OfsX{}, m_OfsY{};
 	bool m_IsAlpha{ true }, m_IsCursor{ false };
@@ -60,7 +60,7 @@ struct GameInterfaceFile_t final
 
 	// Methods
 
-	std::set<std::filesystem::path> ImageFiles() const noexcept;
+	std::set<Image_t> Images() const noexcept;
 
 	void Import(std::filesystem::path const &Path) noexcept;
 	void Export(tinyxml2::XMLDocument *xml) const noexcept;

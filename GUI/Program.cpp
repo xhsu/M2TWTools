@@ -20,6 +20,7 @@
 extern void DockingSpaceDisplay() noexcept;
 extern void ImageWindowDisplay() noexcept;
 extern void OperationWindowDisplay() noexcept;
+extern void SpriteWindowDisplay() noexcept;
 
 // Main code
 int main(int argc, char *argv[]) noexcept
@@ -71,12 +72,23 @@ int main(int argc, char *argv[]) noexcept
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;		// Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;		// Enable Gamepad Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;			// Enable Docking
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
+	//io.ConfigViewportsNoAutoMerge = true;
+	//io.ConfigViewportsNoTaskBarIcon = true;
 	io.ConfigWindowsMoveFromTitleBarOnly = true;				// We need to drag images.
 
 	// Setup Dear ImGui style
 	//ImGui::StyleColorsDark();
 	ImGui::StyleColorsLight();
+
+	// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+	ImGuiStyle &style = ImGui::GetStyle();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -102,6 +114,11 @@ int main(int argc, char *argv[]) noexcept
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
 	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != nullptr);
+	// Font settings
+	ImFontConfig fontConfig; fontConfig.MergeMode = true;
+	io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\SegoeUI.ttf)", 18.0f, nullptr, io.Fonts->GetGlyphRangesDefault());
+	io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\MSMincho.ttc)", 18.0f, &fontConfig, io.Fonts->GetGlyphRangesJapanese());
+	io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\KaiU.ttf)", 18.0f, &fontConfig, io.Fonts->GetGlyphRangesChineseFull());
 
 	// Our state
 	bool show_demo_window = false;
@@ -133,6 +150,7 @@ int main(int argc, char *argv[]) noexcept
 		DockingSpaceDisplay();
 		ImageWindowDisplay();
 		OperationWindowDisplay();
+		SpriteWindowDisplay();
 
 		// Rendering
 		ImGui::Render();
@@ -142,6 +160,17 @@ int main(int argc, char *argv[]) noexcept
 		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		// Update and Render additional Platform Windows
+		// (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
+		//  For this specific demo app we could also call glfwMakeContextCurrent(window) directly)
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow *backup_current_context = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_context);
+		}
 
 		glfwSwapBuffers(window);
 	}

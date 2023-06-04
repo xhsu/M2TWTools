@@ -4,9 +4,11 @@
 #include <fmt/core.h>
 
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 #include <filesystem>
 #include <ranges>
+#include <set>
 #include <string_view>
 #include <vector>
 
@@ -18,10 +20,11 @@
 using std::string;
 using std::string_view;
 using std::vector;
+using std::set;
 
 namespace fs = std::filesystem;
 
-vector<Image_t> g_rgImages;
+set<Image_t> g_rgImages;
 GameInterfaceFile_t g_SelectedXML;
 ImVec2 g_vecScope(0, 0);
 
@@ -36,6 +39,30 @@ void DockingSpaceDisplay() noexcept
 	{
 		if (ImGui::BeginMenu("Application"))
 		{
+			ImGui::SeparatorText("File");
+
+			if (ImGui::MenuItem("Open", "Ctrl+O"))
+			{
+				if (auto pPath = Win32_OpenFileDialog(L"M2TW UI (*.xml)\0*.xml\0"); pPath)
+				{
+					fmt::print("File selected: {}\n", pPath->u8string());
+					g_SelectedXML.Import(*pPath);
+
+					g_rgImages = g_SelectedXML.Images();
+
+					g_pActivatedImage = nullptr;
+					Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
+
+					tinyxml2::XMLDocument xml;
+					g_SelectedXML.Export(&xml);
+
+					auto const OutPath = pPath->parent_path() / (pPath->stem().native() + L"_DEBUG.xml");
+					xml.SaveFile(OutPath.u8string().c_str());
+				}
+			}
+
+			ImGui::SeparatorText("Debug");
+
 			ImGui::MenuItem("Demo Window", nullptr, &show_demo_window);
 			ImGui::EndMenu();
 		}
@@ -56,11 +83,11 @@ void ImageWindowDisplay() noexcept
 
 	if (ImGui::BeginTabBar("Images", ImGuiTabBarFlags_FittingPolicyScroll))
 	{
-		for (auto &&Image : g_rgImages)
+		for (auto &&Img : g_rgImages)
 		{
-			if (ImGui::BeginTabItem(Image.Name().c_str()))
+			if (ImGui::BeginTabItem(Img.Name().c_str()))
 			{
-				g_pActivatedImage = &Image;
+				g_pActivatedImage = &Img;
 				Canvas::m_vecCursorPos = ImGui::GetMousePos() - ImGui::GetCursorScreenPos() - ImVec2{ ImGui::GetScrollX(), ImGui::GetScrollY() };
 
 				vecContentRegionAvail = ImGui::GetContentRegionAvail();
@@ -112,7 +139,7 @@ void ImageWindowDisplay() noexcept
 		Canvas::m_SelectedSprites =
 			g_SelectedXML.m_rgSprites
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
-			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
 			| std::views::transform([](Sprite_t &spr) noexcept -> Sprite_t *{ return &spr; })
 			| std::ranges::to<vector>();
 	}
@@ -121,7 +148,7 @@ void ImageWindowDisplay() noexcept
 
 	Canvas::m_Gizmos =
 		g_SelectedXML.m_rgSprites
-		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
+		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
 		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return !std::ranges::contains(Canvas::m_SelectedSprites, &spr); })
 		| std::views::transform([](Sprite_t const &spr) noexcept { return spr.m_Rect; })
 		| std::ranges::to<vector>();
@@ -137,14 +164,14 @@ void OperationWindowDisplay() noexcept
 	{
 		if (Canvas::m_SelectedSprites.empty())
 		{
-			ImGui::TextUnformatted("Hovering items: ");
+			ImGui::SeparatorText("Hovering Items");
 
 			bool bAny{ false };
 
 			for (auto &&sz :
 				g_SelectedXML.m_rgSprites
 				| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
-				| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
+				| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
 				| std::views::transform([](Sprite_t const &spr) noexcept -> string const &{ return spr.m_Name; })
 				)
 			{
@@ -157,7 +184,7 @@ void OperationWindowDisplay() noexcept
 		}
 		else
 		{
-			ImGui::TextUnformatted("Selected items: ");
+			ImGui::SeparatorText("Selected Items");
 
 			for (auto &&pSpr : Canvas::m_SelectedSprites)
 			{
@@ -165,30 +192,9 @@ void OperationWindowDisplay() noexcept
 			}
 		}
 
-		if (ImGui::Button("Open"))
-		{
-			if (auto pPath = Win32_OpenFileDialog(L"M2TW UI (*.xml)\0*.xml\0"); pPath)
-			{
-				fmt::print("File selected: {}\n", pPath->u8string());
-				g_SelectedXML.Import(*pPath);
+		ImGui::SeparatorText("Image Manipulation");
 
-				g_rgImages =
-					g_SelectedXML.ImageFiles()
-					| std::views::transform([](fs::path const &Path) noexcept { return Image_t{ Path }; })
-					| std::ranges::to<vector>();
-
-				g_pActivatedImage = nullptr;
-				Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
-
-				tinyxml2::XMLDocument xml;
-				g_SelectedXML.Export(&xml);
-
-				auto const OutPath = pPath->parent_path() / (pPath->stem().native() + L"_DEBUG.xml");
-				xml.SaveFile(OutPath.u8string().c_str());
-			}
-		}
-
-		ImGui::Checkbox("Show gizmos", &Canvas::m_ShouldDrawGizmos);
+		ImGui::Checkbox("Show all gizmos", &Canvas::m_ShouldDrawGizmos);
 
 		ImGui::SliderFloat("X", &g_vecScope.x, 0.f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat("Y", &g_vecScope.y, 0.f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
@@ -199,5 +205,41 @@ void OperationWindowDisplay() noexcept
 
 void SpriteWindowDisplay() noexcept
 {
+	ImGui::Begin("Sprites");
 
+	if (!Canvas::m_SelectedSprites.empty())
+	{
+		for (auto it = Canvas::m_SelectedSprites.begin(); it != Canvas::m_SelectedSprites.end(); /* Does nothing*/)
+		{
+			auto &pSpr = *it;
+			bool bAllowedToExist = pSpr->m_Image == *g_pActivatedImage;
+
+			if (ImGui::CollapsingHeader(pSpr->m_Name.c_str(), &bAllowedToExist, ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				//ImGui::SliderInt("Left", &pSpr->m_Rect.m_left, 0, pSpr->m_Rect.m_right, "%d", ImGuiSliderFlags_AlwaysClamp);
+				//ImGui::SliderInt("Right", &pSpr->m_Rect.m_right, pSpr->m_Rect.m_left, pSpr->m_Image.m_iWidth, "%d", ImGuiSliderFlags_AlwaysClamp);
+				//ImGui::SliderInt("Top", &pSpr->m_Rect.m_top, 0, pSpr->m_Rect.m_bottom, "%d", ImGuiSliderFlags_AlwaysClamp);
+				//ImGui::SliderInt("Bottom", &pSpr->m_Rect.m_bottom, pSpr->m_Rect.m_top, pSpr->m_Image.m_iHeight, "%d", ImGuiSliderFlags_AlwaysClamp);
+
+				ImGui::InputText("Identifier", &pSpr->m_Name);
+
+				ImGui::DragIntRange2("X", &pSpr->m_Rect.m_left, &pSpr->m_Rect.m_right, 1, 0, pSpr->m_Image.m_iWidth, "Left: %d", "Right: %d", ImGuiSliderFlags_AlwaysClamp);
+				ImGui::DragIntRange2("Y", &pSpr->m_Rect.m_top, &pSpr->m_Rect.m_bottom, 1, 0, pSpr->m_Image.m_iHeight, "Top: %d", "Bottom: %d", ImGuiSliderFlags_AlwaysClamp);
+
+				auto const sz = fmt::format("Width: {}, Height: {}", pSpr->m_Rect.m_right - pSpr->m_Rect.m_left, pSpr->m_Rect.m_bottom - pSpr->m_Rect.m_top);
+				ImGui::TextUnformatted(sz.c_str());
+			}
+
+			if (!bAllowedToExist)
+				it = Canvas::m_SelectedSprites.erase(it);
+			else
+				++it;
+		}
+	}
+	else
+	{
+		ImGui::TextUnformatted("Click on image to select sprites!");
+	}
+
+	ImGui::End();
 }

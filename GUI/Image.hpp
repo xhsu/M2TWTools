@@ -16,6 +16,7 @@ struct Image_t final
 			LoadFromFile(m_Path);
 	}
 
+	Image_t() noexcept = default;
 	Image_t(Image_t const &) noexcept = default;
 	Image_t(Image_t &&) noexcept = default;
 
@@ -33,6 +34,9 @@ struct Image_t final
 	void DrawCentered(int iCanvasWidth, int iCanvasHeight) const noexcept;
 
 	inline auto Name() const noexcept { return m_Path.stem().u8string(); }
+
+	inline auto operator<=>(Image_t const &rhs) const noexcept { return m_Path <=> rhs.m_Path; }
+	inline auto operator==(Image_t const &rhs) const noexcept { return m_Path == rhs.m_Path; }
 
 	GLuint m_iTexture{};
 	int m_iWidth{}, m_iHeight{};

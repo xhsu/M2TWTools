@@ -21,11 +21,11 @@ using std::string;
 using std::tuple;
 using std::vector;
 
-set<fs::path> GameInterfaceFile_t::ImageFiles() const noexcept
+set<Image_t> GameInterfaceFile_t::Images() const noexcept
 {
 	return
 		m_rgSprites
-		| std::views::transform([](Sprite_t const &spr) noexcept { return spr.m_Path; })
+		| std::views::transform([](Sprite_t const &spr) noexcept -> Image_t { return spr.m_Image; })
 		| std::ranges::to<set>();
 }
 
@@ -120,7 +120,7 @@ void GameInterfaceFile_t::Import(fs::path const& Path) noexcept
 				Sprite_t
 				{
 					.m_Name{ pSpr->Attribute("name") },
-					.m_Path{ rgszPaths.at(pSpr->IntAttribute("page", -1)) },
+					.m_Image{ rgszPaths.at(pSpr->IntAttribute("page", -1)) },
 					.m_Rect{ pSpr->IntAttribute("left", -1), pSpr->IntAttribute("right", -1), pSpr->IntAttribute("top", -1), pSpr->IntAttribute("bottom", -1), },
 					.m_OfsX = pSpr->IntAttribute("x_offset", -1),
 					.m_OfsY = pSpr->IntAttribute("y_offset", -1),
@@ -148,23 +148,14 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 	auto pName = pRoot->InsertNewChildElement("enumeration_name");
 	pName->SetText(m_EnumerationName.c_str());
 
-	auto const rgszImages = ImageFiles();
+	auto const rgszImages = Images();
 
 	auto pPages = pRoot->InsertNewChildElement("texture_pages");
 	pPages->SetAttribute("count", rgszImages.size());
 
 	for (auto &&[szFileName, iWidth, iHeight] :
 		rgszImages
-		| std::views::transform(
-			[](fs::path const& Path) noexcept
-			{
-				int32_t w{}, h{};
-				auto const image_data = stbi_load(Path.u8string().c_str(), &w, &h, nullptr, 4);
-				stbi_image_free(image_data);
-
-				return tuple{ Path.filename().u8string(), w, h };
-			}
-		)
+		| std::views::transform([](Image_t const &Img) noexcept { return tuple{ Img.m_Path.filename().u8string(), Img.m_iWidth, Img.m_iHeight }; })
 		)
 	{
 		auto pTex = pPages->InsertNewChildElement("page");
@@ -176,8 +167,8 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 
 	// #UPDATE_AT_CPP23 try views::enumerate and to a map?
 	map<fs::path, int> Mapping{};
-	for (int i = 0; auto && Path : rgszImages)
-		Mapping[Path] = i++;
+	for (int i = 0; auto && Img : rgszImages)
+		Mapping[Img.m_Path] = i++;
 
 	auto pSprites = pRoot->InsertNewChildElement("sprites");
 	pSprites->SetAttribute("count", m_rgSprites.size());
@@ -187,7 +178,7 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 		auto pSpr = pSprites->InsertNewChildElement("sprite");
 		pSpr->SetAttribute("index", i++);
 		pSpr->SetAttribute("name", Sprite.m_Name.c_str());
-		pSpr->SetAttribute("page", Mapping.at(Sprite.m_Path));
+		pSpr->SetAttribute("page", Mapping.at(Sprite.m_Image.m_Path));
 		pSpr->SetAttribute("left", Sprite.m_Rect.m_left);
 		pSpr->SetAttribute("right", Sprite.m_Rect.m_right);
 		pSpr->SetAttribute("top", Sprite.m_Rect.m_top);
