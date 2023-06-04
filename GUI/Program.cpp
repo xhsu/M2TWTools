@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) noexcept
 #endif
 
 	// Create window with graphics context
-	GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
+	GLFWwindow *window = glfwCreateWindow(1280, 720, "M2TW UI Tool", nullptr, nullptr);
 	if (window == nullptr)
 		return 1;
 	glfwMakeContextCurrent(window);

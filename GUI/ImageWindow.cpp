@@ -27,6 +27,7 @@ namespace fs = std::filesystem;
 set<Image_t> g_rgImages;
 GameInterfaceFile_t g_SelectedXML;
 ImVec2 g_vecScope(0, 0);
+fs::path g_CurrentPath;
 
 void DockingSpaceDisplay() noexcept
 {
@@ -45,6 +46,8 @@ void DockingSpaceDisplay() noexcept
 			{
 				if (auto pPath = Win32_OpenFileDialog(L"M2TW UI (*.xml)\0*.xml\0"); pPath)
 				{
+					g_CurrentPath = *pPath;
+
 					fmt::print("File selected: {}\n", pPath->u8string());
 					g_SelectedXML.Import(*pPath);
 
@@ -52,18 +55,22 @@ void DockingSpaceDisplay() noexcept
 
 					g_pActivatedImage = nullptr;
 					Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
-
-					tinyxml2::XMLDocument xml;
-					g_SelectedXML.Export(&xml);
-
-					auto const OutPath = pPath->parent_path() / (pPath->stem().native() + L"_DEBUG.xml");
-					xml.SaveFile(OutPath.u8string().c_str());
 				}
 			}
 
-			ImGui::SeparatorText("Debug");
+			if (ImGui::MenuItem("Save", "Ctrl+S") && fs::exists(g_CurrentPath))
+			{
+				tinyxml2::XMLDocument xml;
+				g_SelectedXML.Export(&xml);
 
+				auto const OutPath = g_CurrentPath.parent_path() / (g_CurrentPath.stem().native() + L"_DEBUG.xml");
+				xml.SaveFile(OutPath.u8string().c_str());
+			}
+
+#ifdef _DEBUG
+			ImGui::SeparatorText("Debug");
 			ImGui::MenuItem("Demo Window", nullptr, &show_demo_window);
+#endif
 			ImGui::EndMenu();
 		}
 
