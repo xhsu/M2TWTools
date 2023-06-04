@@ -49,7 +49,10 @@ void DockingSpaceDisplay() noexcept
 
 void ImageWindowDisplay() noexcept
 {
-	ImGui::Begin("OpenGL Texture Text");
+	static ImVec2 vecContentRegionAvail{};
+	static bool bUpdateSelectInfo{ false };
+
+	ImGui::Begin("GUI Pages");
 
 	if (ImGui::BeginTabBar("Images", ImGuiTabBarFlags_FittingPolicyScroll))
 	{
@@ -60,10 +63,19 @@ void ImageWindowDisplay() noexcept
 				g_pActivatedImage = &Image;
 				Canvas::m_vecCursorPos = ImGui::GetMousePos() - ImGui::GetCursorScreenPos() - ImVec2{ ImGui::GetScrollX(), ImGui::GetScrollY() };
 
-				ImGui::Image((void *)(intptr_t)g_iFrameTexture, ImVec2(CANVAS_WIDTH, CANVAS_HEIGHT), g_vecScope, g_vecScope + ImVec2{ 0.5f, 0.5f });
+				vecContentRegionAvail = ImGui::GetContentRegionAvail();
+
+				ImGui::Image(
+					(void *)(intptr_t)g_iFrameTexture,
+					ImVec2((float)CANVAS_WIDTH, (float)CANVAS_HEIGHT),
+					g_vecScope, g_vecScope + ImVec2{ 0.5f, 0.5f }
+				);
+
 				if (Canvas::m_UpdateCursor = ImGui::IsItemHovered())
 				{
 					ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+
+					// Drag the image
 
 					// Sign reversed for human sense.
 					g_vecScope.x = std::clamp(g_vecScope.x - ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).x * 0.5f / CANVAS_WIDTH, 0.f, 0.5f);
@@ -71,6 +83,9 @@ void ImageWindowDisplay() noexcept
 
 					// Clear drag data.
 					ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Middle] = ImGui::GetIO().MousePos;
+
+					// Select rect
+					bUpdateSelectInfo = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 				}
 
 				ImGui::EndTabItem();
@@ -90,14 +105,28 @@ void ImageWindowDisplay() noexcept
 	Canvas::m_vecCursorPos *= 0.5f;
 	Canvas::m_vecCursorPos += ImVec2{(float)RecCurrentCanvas.m_left, (float)RecCurrentCanvas.m_top};
 
+	// Update selection info.
+
+	if (bUpdateSelectInfo)
+	{
+		Canvas::m_SelectedSprites =
+			g_SelectedXML.m_rgSprites
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
+			| std::views::transform([](Sprite_t &spr) noexcept -> Sprite_t *{ return &spr; })
+			| std::ranges::to<vector>();
+	}
+
 	// Canvas will update post-render on itself.
 
 	Canvas::m_Gizmos =
 		g_SelectedXML.m_rgSprites
 		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
+		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return !std::ranges::contains(Canvas::m_SelectedSprites, &spr); })
 		| std::views::transform([](Sprite_t const &spr) noexcept { return spr.m_Rect; })
 		| std::ranges::to<vector>();
-	
+
+	Canvas::Resize(static_cast<int>(vecContentRegionAvail.x), static_cast<int>(vecContentRegionAvail.y));
 	Canvas::Update();
 }
 
@@ -106,22 +135,35 @@ void OperationWindowDisplay() noexcept
 	ImGui::Begin("Actions");
 
 	{
-		ImGui::TextUnformatted("Selected element:");
-
-		bool bAny{ false };
-		for (auto &&sz :
-			g_SelectedXML.m_rgSprites
-			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
-			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
-			| std::views::transform([](Sprite_t const &spr) noexcept -> string const& { return spr.m_Name; })
-			)
+		if (Canvas::m_SelectedSprites.empty())
 		{
-			ImGui::BulletText(sz.c_str());
-			bAny = true;
-		}
+			ImGui::TextUnformatted("Hovering items: ");
 
-		if (!bAny)
-			ImGui::BulletText("[None]");
+			bool bAny{ false };
+
+			for (auto &&sz :
+				g_SelectedXML.m_rgSprites
+				| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
+				| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Path == g_pActivatedImage->m_Path; })
+				| std::views::transform([](Sprite_t const &spr) noexcept -> string const &{ return spr.m_Name; })
+				)
+			{
+				ImGui::BulletText(sz.c_str());
+				bAny = true;
+			}
+
+			if (!bAny)
+				ImGui::BulletText("[None]");
+		}
+		else
+		{
+			ImGui::TextUnformatted("Selected items: ");
+
+			for (auto &&pSpr : Canvas::m_SelectedSprites)
+			{
+				ImGui::BulletText(pSpr->m_Name.c_str());
+			}
+		}
 
 		if (ImGui::Button("Open"))
 		{
@@ -136,6 +178,7 @@ void OperationWindowDisplay() noexcept
 					| std::ranges::to<vector>();
 
 				g_pActivatedImage = nullptr;
+				Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
 
 				tinyxml2::XMLDocument xml;
 				g_SelectedXML.Export(&xml);
@@ -152,4 +195,9 @@ void OperationWindowDisplay() noexcept
 	}
 
 	ImGui::End();
+}
+
+void SpriteWindowDisplay() noexcept
+{
+
 }

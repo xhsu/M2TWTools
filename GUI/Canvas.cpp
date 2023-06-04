@@ -60,6 +60,29 @@ void Canvas::Initialize() noexcept
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void Canvas::Resize(int iWidth, int iHeight) noexcept
+{
+	if (iWidth == CANVAS_WIDTH && iHeight == CANVAS_HEIGHT)
+		return;
+
+	CANVAS_WIDTH = iWidth;
+	CANVAS_HEIGHT = iHeight;
+
+	glDeleteTextures(1, &g_iFrameTexture);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, g_iFrameBuffer);
+
+	glGenTextures(1, &g_iFrameTexture);
+	glBindTexture(GL_TEXTURE_2D, g_iFrameTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, iWidth, iHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_iFrameTexture, 0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Canvas::Update() noexcept
 {
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -136,11 +159,11 @@ void Canvas::Update() noexcept
 
 	if (m_ShouldDrawGizmos)
 	{
+		glDisable(GL_TEXTURE_2D);
+
 		for (auto &&Rect : m_Gizmos)
 		{
-			glDisable(GL_TEXTURE_2D);
-
-			glColor3f(1, 0, 0);
+			glColor3d(1, 0, 0);
 
 			glBegin(GL_LINE_LOOP);
 			glVertex2d(Rect.m_left, Rect.m_top);	// #INVESTIGATE weird offset.
@@ -148,9 +171,32 @@ void Canvas::Update() noexcept
 			glVertex2d(Rect.m_right + 1, Rect.m_bottom + 1);
 			glVertex2d(Rect.m_left, Rect.m_bottom + 1);
 			glEnd();
-
-			glEnable(GL_TEXTURE_2D);
 		}
+
+		glEnable(GL_TEXTURE_2D);
+	}
+
+	if (!m_SelectedSprites.empty())
+	{
+		glDisable(GL_TEXTURE_2D);
+
+		static constexpr auto omega = 2.0;
+		auto const s = (std::sin(Timer::Now() * omega) + 1) / 2.0;
+		auto const [r, g, b] = HueToRGB(s * 360);
+
+		for (auto &&pSpr : m_SelectedSprites)
+		{
+			glColor3d(r,g, b);
+
+			glBegin(GL_LINE_LOOP);
+			glVertex2d(pSpr->m_Rect.m_left, pSpr->m_Rect.m_top);	// #INVESTIGATE weird offset.
+			glVertex2d(pSpr->m_Rect.m_right + 1, pSpr->m_Rect.m_top);
+			glVertex2d(pSpr->m_Rect.m_right + 1, pSpr->m_Rect.m_bottom + 1);
+			glVertex2d(pSpr->m_Rect.m_left, pSpr->m_Rect.m_bottom + 1);
+			glEnd();
+		}
+
+		glEnable(GL_TEXTURE_2D);
 	}
 
 	//glDisable(GL_TEXTURE_2D);

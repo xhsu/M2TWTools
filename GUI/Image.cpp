@@ -47,3 +47,21 @@ void Image_t::Draw() const noexcept
 	glVertex2i(0, m_iHeight);
 	glEnd();
 }
+
+void Image_t::DrawCentered(int iCanvasWidth, int iCanvasHeight) const noexcept
+{
+	auto const iOriginX = (iCanvasWidth - 1) / 2 - (m_iWidth - 1) / 2;
+	auto const iOriginY = (iCanvasHeight - 1) / 2 - (m_iHeight - 1) / 2;
+
+	glBindTexture(GL_TEXTURE_2D, m_iTexture);
+	glBegin(GL_QUADS);
+	glTexCoord2f(0, 0);
+	glVertex2i(iOriginX, iOriginY);
+	glTexCoord2f(1, 0);
+	glVertex2i(iOriginX + m_iWidth, iOriginY);
+	glTexCoord2f(1, 1);
+	glVertex2i(iOriginX + m_iWidth, iOriginY + m_iHeight);
+	glTexCoord2f(0, 1);
+	glVertex2i(iOriginX, iOriginY + m_iHeight);
+	glEnd();
+}

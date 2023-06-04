@@ -30,6 +30,7 @@ struct Image_t final
 	inline operator bool() const noexcept { return Valid(); }
 
 	void Draw() const noexcept;
+	void DrawCentered(int iCanvasWidth, int iCanvasHeight) const noexcept;
 
 	inline auto Name() const noexcept { return m_Path.stem().u8string(); }
 

@@ -13,7 +13,7 @@ struct rect_t final
 {
 	int32_t m_left{}, m_right{}, m_top{}, m_bottom{};
 
-	inline bool IsPointIn(ImVec2 pos) const noexcept
+	inline constexpr bool IsPointIn(ImVec2 pos) const noexcept
 	{
 		return
 			m_left <= pos.x && pos.x <= m_right
@@ -21,6 +21,9 @@ struct rect_t final
 			m_top <= pos.y && pos.y <= m_bottom	// reversed Y axis.
 			;
 	}
+
+	// Thanks, C++20.
+	inline constexpr auto operator<=> (rect_t const &) const noexcept = default;
 };
 
 struct Sprite_t final
@@ -30,6 +33,9 @@ struct Sprite_t final
 	rect_t m_Rect{};
 	int32_t m_OfsX{}, m_OfsY{};
 	bool m_IsAlpha{ true }, m_IsCursor{ false };
+
+	// Only name make difference. Just like in game.
+	inline constexpr auto operator<=> (Sprite_t const &rhs) const noexcept { return m_Name <=> rhs.m_Name; }
 };
 
 struct GameInterfaceFile_t final
