@@ -100,8 +100,7 @@ void AddSpriteDialog(bool bShow) noexcept
 		ImGui::OpenPopup("Add a new sprite ...");
 
 	// Always center this window when appearing
-	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
 	if (ImGui::BeginPopupModal("Add a new sprite ...", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
@@ -192,9 +191,41 @@ void AddSpriteDialog(bool bShow) noexcept
 	}
 }
 
+void AboutDialog(bool bShow) noexcept
+{
+	if (bShow)
+		ImGui::OpenPopup("About...");
+
+	// Always center this window when appearing
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+	if (ImGui::BeginPopupModal("About...", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextUnformatted("Version 1.0");
+		ImGui::TextUnformatted("By: Hydrogenium, @" __DATE__);
+		ImGui::TextUnformatted("Website: https://github.com/xhsu/M2TWTools/releases");
+
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+		{
+			ImGui::SetTooltip("Right-click to copy the URL.");
+
+			if (ImGui::IsKeyPressed(ImGuiKey_MouseRight))
+				ImGui::SetClipboardText("https://github.com/xhsu/M2TWTools/releases");
+		}
+
+		ImGui::NewLine();
+
+		if (Helper_AlignedButton("Close", ImVec2{ 96, 0 }))
+			ImGui::CloseCurrentPopup();
+
+		ImGui::EndPopup();
+	}
+}
+
 void DockingSpaceDisplay() noexcept
 {
-	static bool show_demo_window = false, bAddSpr{};
+	static bool show_demo_window = false;
+	bool bAddSpr{}, bShowAbout{};
 
 	if (show_demo_window)
 		ImGui::ShowDemoWindow(&show_demo_window);
@@ -245,6 +276,9 @@ void DockingSpaceDisplay() noexcept
 			ImGui::SeparatorText("Debug");
 			ImGui::MenuItem("Demo Window", nullptr, &show_demo_window);
 #endif
+			ImGui::SeparatorText("Application");
+			bShowAbout = ImGui::MenuItem("About");
+
 			ImGui::EndMenu();
 		}
 
@@ -273,7 +307,7 @@ void DockingSpaceDisplay() noexcept
 	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_AutoHideTabBar);
 
 	AddSpriteDialog(bAddSpr);
-	bAddSpr = false;
+	AboutDialog(bShowAbout);
 }
 
 void ImageWindowDisplay() noexcept
