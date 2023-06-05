@@ -22,6 +22,44 @@ extern void ImageWindowDisplay() noexcept;
 extern void OperationWindowDisplay() noexcept;
 extern void SpriteWindowDisplay() noexcept;
 
+inline constexpr char g_Ini[] =
+R"(
+[Window][DockSpaceViewport_11111111]
+Pos=0,24
+Size=1280,696
+Collapsed=0
+
+[Window][Actions]
+Pos=986,24
+Size=294,348
+Collapsed=0
+DockId=0x00000003,0
+
+[Window][Debug##Default]
+Pos=60,60
+Size=400,400
+Collapsed=0
+
+[Window][GUI Pages]
+Pos=0,24
+Size=984,696
+Collapsed=0
+DockId=0x00000001,0
+
+[Window][Sprites]
+Pos=986,374
+Size=294,346
+Collapsed=0
+DockId=0x00000006,0
+
+[Docking][Data]
+DockSpace     ID=0x8B93E3BD Window=0xA787BDB4 Pos=112,159 Size=1280,696 Split=X
+  DockNode    ID=0x00000001 Parent=0x8B93E3BD SizeRef=984,701 CentralNode=1 HiddenTabBar=1 Selected=0xE7C1975D
+  DockNode    ID=0x00000002 Parent=0x8B93E3BD SizeRef=294,701 Split=Y Selected=0x7D8AF184
+    DockNode  ID=0x00000003 Parent=0x00000002 SizeRef=144,351 HiddenTabBar=1 Selected=0x7D8AF184
+    DockNode  ID=0x00000006 Parent=0x00000002 SizeRef=144,348 HiddenTabBar=1 Selected=0x3B8DF718
+)""\0";
+
 // Main code
 int main(int argc, char *argv[]) noexcept
 {
@@ -77,6 +115,10 @@ int main(int argc, char *argv[]) noexcept
 	//io.ConfigViewportsNoAutoMerge = true;
 	//io.ConfigViewportsNoTaskBarIcon = true;
 	io.ConfigWindowsMoveFromTitleBarOnly = true;				// We need to drag images.
+
+	// No annoying imgui.ini
+	io.IniFilename = nullptr;
+	ImGui::LoadIniSettingsFromMemory(g_Ini, sizeof(g_Ini));
 
 	// Setup Dear ImGui style
 	//ImGui::StyleColorsDark();

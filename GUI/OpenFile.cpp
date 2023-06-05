@@ -1,28 +1,38 @@
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <Windows.h>      // For common windows data types and function headers
+#include <tinyfiledialogs/tinyfiledialogs.h>
 
 #include <filesystem>
 #include <optional>
+#include "OpenFile.hpp"
 
-std::optional<std::filesystem::path> Win32_OpenFileDialog(wchar_t const *const pszFilter) noexcept
+std::optional<std::filesystem::path> Win32_OpenFileDialog(wchar_t const *pszTitle, wchar_t const *pszFilter, wchar_t const* pszDesc, bool bMultiSelection) noexcept
 {
-	wchar_t filename[MAX_PATH]{};
+	auto const file = tinyfd_openFileDialogW(
+		pszTitle,
+		L"",
+		1,
+		&pszFilter,
+		pszDesc,
+		bMultiSelection
+	);
 
-	OPENFILENAME ofn{};
-	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = nullptr;  // If you have a window to center over, put its HANDLE here
-	ofn.lpstrFilter = pszFilter;
-	ofn.lpstrFile = filename;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrTitle = L"Select UI XML file ...";
-	ofn.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST | OFN_EXPLORER | OFN_LONGNAMES;
+	if (file)
+		return file;
 
-	if (GetOpenFileName(&ofn))
-	{
-		return filename;
-	}
+	return std::nullopt;
+}
+
+std::optional<std::filesystem::path> Win32_SaveFileDialog(wchar_t const *pszTitle, wchar_t const* pszDefault, wchar_t const* pszFilter, wchar_t const* pszDesc) noexcept
+{
+	auto const file = tinyfd_saveFileDialogW(
+		pszTitle,
+		pszDefault,
+		1,
+		&pszFilter,
+		pszDesc
+	);
+
+	if (file)
+		return file;
 
 	return std::nullopt;
 }

@@ -80,7 +80,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);FMT_HEADER_ONLY;IMGUI_USER_CONFIG="ImGuiConfig.hpp"</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <Link>
@@ -97,7 +97,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);FMT_HEADER_ONLY;IMGUI_USER_CONFIG="ImGuiConfig.hpp"</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <Link>
@@ -114,7 +114,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);FMT_HEADER_ONLY;IMGUI_USER_CONFIG="ImGuiConfig.hpp"</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <Link>
@@ -131,7 +131,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);FMT_HEADER_ONLY;IMGUI_USER_CONFIG="ImGuiConfig.hpp"</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <Link>
@@ -153,6 +153,7 @@
     <ClCompile Include="..\..\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="..\..\imgui\misc\freetype\imgui_freetype.cpp" />
     <ClCompile Include="..\glad\src\glad.c" />
+    <ClCompile Include="..\tinyfiledialogs\tinyfiledialogs.c" />
     <ClCompile Include="..\tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="Canvas.cpp" />
     <ClCompile Include="GameInterfaceFile.cpp" />
@@ -161,7 +162,7 @@
     <ClCompile Include="OpenFile.cpp" />
     <ClCompile Include="Program.cpp" />
     <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="stb_impl.cpp" />
+    <ClCompile Include="stb_impl.c" />
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -177,6 +178,7 @@
     <ClInclude Include="..\..\imgui\misc\cpp\imgui_stdlib.h" />
     <ClInclude Include="..\..\imgui\misc\freetype\imgui_freetype.h" />
     <ClInclude Include="..\glad\include\glad\glad.h" />
+    <ClInclude Include="..\tinyfiledialogs\tinyfiledialogs.h" />
     <ClInclude Include="..\tinyxml2\tinyxml2.h" />
     <ClInclude Include="Canvas.hpp" />
     <ClInclude Include="GameInterfaceFile.hpp" />

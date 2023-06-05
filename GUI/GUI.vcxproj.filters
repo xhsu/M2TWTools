@@ -23,7 +23,7 @@
     <ClCompile Include="..\..\imgui\backends\imgui_impl_opengl3.cpp">
       <Filter>ImGui\backends</Filter>
     </ClCompile>
-    <ClCompile Include="stb_impl.cpp">
+    <ClCompile Include="stb_impl.c">
       <Filter>stb</Filter>
     </ClCompile>
     <ClCompile Include="ImageWindow.cpp" />
@@ -45,6 +45,9 @@
     <ClCompile Include="Canvas.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="..\tinyfiledialogs\tinyfiledialogs.c">
+      <Filter>tinyfiledialogs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ImGui">
@@ -73,6 +76,9 @@
     </Filter>
     <Filter Include="tinyxml2">
       <UniqueIdentifier>{8fbc412c-cc27-4c2e-8f3a-c9a1f83c0aa1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tinyfiledialogs">
+      <UniqueIdentifier>{ad684387-dfd5-46d9-a73b-0ed1634fe3a7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -122,6 +128,9 @@
     <ClInclude Include="Canvas.hpp" />
     <ClInclude Include="Timer.hpp" />
     <ClInclude Include="Shader.hpp" />
+    <ClInclude Include="..\tinyfiledialogs\tinyfiledialogs.h">
+      <Filter>tinyfiledialogs</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis">

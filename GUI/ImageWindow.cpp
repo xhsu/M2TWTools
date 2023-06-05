@@ -207,7 +207,7 @@ void DockingSpaceDisplay() noexcept
 
 			if (ImGui::MenuItem("Open", "Ctrl+O"))
 			{
-				if (auto pPath = Win32_OpenFileDialog(L"M2TW UI (*.xml)\0*.xml\0"); pPath)
+				if (auto pPath = Win32_OpenFileDialog(L"Select M2TW UI XML", L"*.xml", L"Extensible Markup Language (*.xml)"); pPath)
 				{
 					g_CurrentPath = *pPath;
 
@@ -226,8 +226,19 @@ void DockingSpaceDisplay() noexcept
 				tinyxml2::XMLDocument xml;
 				g_SelectedXML.Export(&xml);
 
-				auto const OutPath = g_CurrentPath.parent_path() / (g_CurrentPath.stem().native() + L"_DEBUG.xml");
-				xml.SaveFile(OutPath.u8string().c_str());
+				xml.SaveFile(g_CurrentPath.u8string().c_str());
+			}
+			if (ImGui::MenuItem("Save as...", "Ctrl+Alt+S") && fs::exists(g_CurrentPath))
+			{
+				auto const DefaultOut = g_CurrentPath.parent_path() / (g_CurrentPath.stem().native() + L"_DEBUG.xml");
+
+				if (auto pOutPath = Win32_SaveFileDialog(L"Save as...", DefaultOut.c_str(), L"*.xml", L"Extensible Markup Language (*.xml)"); pOutPath)
+				{
+					tinyxml2::XMLDocument xml;
+					g_SelectedXML.Export(&xml);
+
+					xml.SaveFile(pOutPath->u8string().c_str());
+				}
 			}
 
 #ifdef _DEBUG
@@ -323,7 +334,7 @@ void ImageWindowDisplay() noexcept
 			{
 				fmt::print(fg(fmt::color::light_golden_rod_yellow), "You may only be able to edit existing UI file, not creating one from scratch.");
 			}
-			else if (auto pPath = Win32_OpenFileDialog(L"UI Page (*.tga)\0*.tga"); pPath)
+			else if (auto pPath = Win32_OpenFileDialog(L"Add a new UI page", L"*.tga", L"TARGA (*.tga)"); pPath)
 			{
 				g_rgImages.emplace(*pPath);
 			}
