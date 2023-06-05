@@ -1,7 +1,7 @@
 
 #include <glad/glad.h>
 
-#include <fmt/core.h>
+#include <fmt/color.h>
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -26,12 +26,24 @@ namespace fs = std::filesystem;
 
 set<Image_t> g_rgImages;
 GameInterfaceFile_t g_SelectedXML;
-ImVec2 g_vecScope(0, 0);
 fs::path g_CurrentPath;
+
+ImVec2 g_vecImgOrigin;	// Left-top conor of the image.
+float g_flScope = 1;	// Scoping image
 
 namespace Config
 {
 	inline bool EnableAdvSprEditing = false;
+}
+
+inline void UpdateScopeValue(float delta = 0.f) noexcept
+{
+	if (delta != 0.f)
+		g_flScope = std::clamp(g_flScope + delta, 0.1f, 1.f);
+
+	auto const flScale = 1.f - g_flScope;
+	g_vecImgOrigin.x = std::clamp(g_vecImgOrigin.x, 0.f, flScale);
+	g_vecImgOrigin.y = std::clamp(g_vecImgOrigin.y, 0.f, flScale);
 }
 
 inline void Helper_SpritePreviewTooltip(Sprite_t const &spr) noexcept
@@ -63,6 +75,20 @@ inline bool Helper_AlignedButton(const char *label, ImVec2 const &vecSize = {}, 
 		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
 
 	return ImGui::Button(label, vecSize);
+}
+
+inline void Helper_HelpMarker(const char *desc) noexcept
+{
+	ImGui::SameLine();
+	ImGui::TextDisabled("(?)");
+
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort) && ImGui::BeginTooltip())
+	{
+		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+		ImGui::TextUnformatted(desc);
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
 }
 
 void AddSpriteDialog(bool bShow) noexcept
@@ -246,7 +272,7 @@ void ImageWindowDisplay() noexcept
 
 	ImGui::Begin("GUI Pages");
 
-	if (ImGui::BeginTabBar("Images", ImGuiTabBarFlags_FittingPolicyScroll))
+	if (ImGui::BeginTabBar("Images", ImGuiTabBarFlags_FittingPolicyScroll | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_AutoSelectNewTabs))
 	{
 		for (auto &&Img : g_rgImages)
 		{
@@ -260,7 +286,7 @@ void ImageWindowDisplay() noexcept
 				ImGui::Image(
 					(void *)(intptr_t)g_iFrameTexture,
 					ImVec2((float)CANVAS_WIDTH, (float)CANVAS_HEIGHT),
-					g_vecScope, g_vecScope + ImVec2{ 0.5f, 0.5f }
+					g_vecImgOrigin, g_vecImgOrigin + ImVec2{ g_flScope, g_flScope }
 				);
 
 				if (Canvas::m_UpdateCursor = ImGui::IsItemHovered())
@@ -270,17 +296,36 @@ void ImageWindowDisplay() noexcept
 					// Drag the image
 
 					// Sign reversed for human sense.
-					g_vecScope.x = std::clamp(g_vecScope.x - ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).x * 0.5f / CANVAS_WIDTH, 0.f, 0.5f);
-					g_vecScope.y = std::clamp(g_vecScope.y - ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).y * 0.5f / CANVAS_WIDTH, 0.f, 0.5f);
+					auto const flScale = 1.f - g_flScope;
+					g_vecImgOrigin.x = std::clamp(g_vecImgOrigin.x - ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).x * flScale / CANVAS_WIDTH, 0.f, flScale);
+					g_vecImgOrigin.y = std::clamp(g_vecImgOrigin.y - ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).y * flScale / CANVAS_WIDTH, 0.f, flScale);
 
 					// Clear drag data.
 					ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Middle] = ImGui::GetIO().MousePos;
 
 					// Select rect
 					bUpdateSelectInfo = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+					if (ImGui::GetIO().MouseWheel < 0)
+						UpdateScopeValue(0.1f);
+					else if (ImGui::GetIO().MouseWheel > 0)
+						UpdateScopeValue(-0.1f);
 				}
 
 				ImGui::EndTabItem();
+			}
+		}
+
+		// Enroll new image
+		if (ImGui::TabItemButton(/*u8"\uFF0B"*/"+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoReorder))
+		{
+			if (g_CurrentPath.empty())
+			{
+				fmt::print(fg(fmt::color::light_golden_rod_yellow), "You may only be able to edit existing UI file, not creating one from scratch.");
+			}
+			else if (auto pPath = Win32_OpenFileDialog(L"UI Page (*.tga)\0*.tga"); pPath)
+			{
+				g_rgImages.emplace(*pPath);
 			}
 		}
 
@@ -290,11 +335,11 @@ void ImageWindowDisplay() noexcept
 	ImGui::End();
 
 	rect_t const RecCurrentCanvas{
-		(int32_t)std::roundf(g_vecScope.x * CANVAS_WIDTH),	(int32_t)std::roundf(std::min(g_vecScope.x + 0.5f, 1.f) * CANVAS_WIDTH),		// l, r
-		(int32_t)std::roundf(g_vecScope.y * CANVAS_HEIGHT),	(int32_t)std::roundf(std::min(g_vecScope.y + 0.5f, 1.f) * CANVAS_HEIGHT),	// t, b
+		(int32_t)std::roundf(g_vecImgOrigin.x * CANVAS_WIDTH),	(int32_t)std::roundf(std::min(g_vecImgOrigin.x + g_flScope, 1.f) * CANVAS_WIDTH),	// l, r
+		(int32_t)std::roundf(g_vecImgOrigin.y * CANVAS_HEIGHT),	(int32_t)std::roundf(std::min(g_vecImgOrigin.y + g_flScope, 1.f) * CANVAS_HEIGHT),	// t, b
 	};
 
-	Canvas::m_vecCursorPos *= 0.5f;
+	Canvas::m_vecCursorPos *= g_flScope;
 	Canvas::m_vecCursorPos += ImVec2{(float)RecCurrentCanvas.m_left, (float)RecCurrentCanvas.m_top};
 
 	// Update selection info.
@@ -364,8 +409,14 @@ void OperationWindowDisplay() noexcept
 
 		ImGui::Checkbox("Show all gizmos", &Canvas::m_ShouldDrawGizmos);
 
-		ImGui::SliderFloat("X", &g_vecScope.x, 0.f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Y", &g_vecScope.y, 0.f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::SliderFloat("Scope", &g_flScope, 0.1f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+			UpdateScopeValue();
+		Helper_HelpMarker("You may also scroll the mouse wheel when hovering on the image.");
+
+		auto const flScale = 1.f - g_flScope;
+		ImGui::SliderFloat("X", &g_vecImgOrigin.x, 0.f, flScale, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Y", &g_vecImgOrigin.y, 0.f, flScale, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		Helper_HelpMarker("You may also drag the image by click and hold the mouse wheel when hovering on the image.");
 	}
 
 	ImGui::End();
