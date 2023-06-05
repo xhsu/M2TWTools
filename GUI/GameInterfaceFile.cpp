@@ -135,6 +135,9 @@ void GameInterfaceFile_t::Import(fs::path const& Path) noexcept
 			return;
 		}
 	}
+
+	if (Config::ShouldSort)
+		std::ranges::sort(m_rgSprites);
 }
 
 void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept

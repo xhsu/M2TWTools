@@ -9,6 +9,11 @@
 
 #include "Image.hpp"
 
+namespace Config
+{
+	inline bool ShouldSort = true;
+}
+
 struct rect_t final
 {
 	int32_t m_left{}, m_right{}, m_top{}, m_bottom{};
@@ -39,6 +44,7 @@ struct Sprite_t final
 
 	// Only name make difference. Just like in game.
 	inline constexpr auto operator<=> (Sprite_t const &rhs) const noexcept { return m_Name <=> rhs.m_Name; }
+	inline constexpr auto operator== (Sprite_t const &rhs) const noexcept { return m_Name == m_Name; }
 };
 
 struct GameInterfaceFile_t final

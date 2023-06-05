@@ -29,6 +29,11 @@ GameInterfaceFile_t g_SelectedXML;
 ImVec2 g_vecScope(0, 0);
 fs::path g_CurrentPath;
 
+namespace Config
+{
+	inline bool EnableAdvSprEditing = false;
+}
+
 inline void Helper_SpritePreviewTooltip(Sprite_t const &spr) noexcept
 {
 	if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -47,9 +52,123 @@ inline void Helper_SpritePreviewTooltip(Sprite_t const &spr) noexcept
 	}
 }
 
+inline bool Helper_AlignedButton(const char *label, ImVec2 const &vecSize = {}, float alignment = 0.5f) noexcept
+{
+	auto const &style = ImGui::GetStyle();
+
+	auto const size = std::max(ImGui::CalcTextSize(label).x + style.FramePadding.x * 2.0f, vecSize.x);
+	auto const &avail = ImGui::GetContentRegionAvail().x;
+
+	if (auto const off = (avail - size) * alignment; off > 0.0f)
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+
+	return ImGui::Button(label, vecSize);
+}
+
+void AddSpriteDialog(bool bShow) noexcept
+{
+	if (!g_pActivatedImage)
+		return;
+
+	if (bShow)
+		ImGui::OpenPopup("Add a new sprite ...");
+
+	// Always center this window when appearing
+	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+	if (ImGui::BeginPopupModal("Add a new sprite ...", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::BeginDisabled();
+		if (ImGui::BeginCombo("Page", g_pActivatedImage->Name().c_str()))
+		{
+			for (auto &&Img : g_rgImages)
+				ImGui::Selectable(Img.Name().c_str(), Img == *g_pActivatedImage);
+
+			ImGui::EndCombo();
+		}
+
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("The page must be the current page!");
+
+		ImGui::EndDisabled();
+
+		static string szName{};
+		ImGui::InputText("Identifier", &szName, ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank);
+
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Name must be unique and consists of:\n - '_' symbol\n - [A..Z]");
+
+		ImGui::BeginDisabled();
+
+		static rect_t Rect{ 0, g_pActivatedImage->m_iWidth / 2, 0, g_pActivatedImage->m_iHeight / 2 };
+		ImGui::InputInt4("Rectangle", &Rect.m_left);
+
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("Must use default value now.\nYou can edit them later!");
+
+		ImGui::EndDisabled();
+
+		static bool bShowAdv{ false };
+		ImGui::Checkbox("Show advance settings", &bShowAdv);
+
+		static bool bAlpha{ true }, bCursor{ false };
+		static int32_t ofs_x{}, ofs_y{};
+		if (bShowAdv)
+		{
+			ImGui::Checkbox("Alpha", &bAlpha); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Purpose unknown. Everything in vanilla is set to 'true' expect one.\nDefault: true"); ImGui::SameLine();
+			ImGui::Checkbox("Cursor", &bCursor); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Could be an indicator that this is used as mouse cursor replacement.\nDefault: false");
+
+			ImGui::InputInt("X Offset", &ofs_x); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Some coord used if this sprite were to used as mouse cursor???\nDefault: 0");
+			ImGui::InputInt("Y Offset", &ofs_y); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Some coord used if this sprite were to used as mouse cursor???\nDefault: 0");
+		}
+
+		ImGui::NewLine();
+		if (Helper_AlignedButton("Accept", ImVec2{ 96, 0 }))
+		{
+			auto &Sprite = g_SelectedXML.m_rgSprites.emplace_back(Sprite_t{
+				.m_Name{ std::move(szName) },
+				.m_Image{ *g_pActivatedImage },
+				.m_Rect{ Rect },
+				.m_OfsX{ ofs_x },
+				.m_OfsY{ ofs_y },
+				.m_IsAlpha{ bAlpha },
+				.m_IsCursor{ bCursor },
+				}
+			);
+
+			Canvas::m_SelectedSprites.emplace_back(&Sprite);
+
+			ImGui::CloseCurrentPopup();
+
+			szName = "";
+			Rect = { 0, g_pActivatedImage->m_iWidth / 2, 0, g_pActivatedImage->m_iHeight / 2 };
+			bShowAdv = false;
+			bAlpha = true;
+			bCursor = false;
+			ofs_x = 0;
+			ofs_y = 0;
+		}
+		if (Helper_AlignedButton("Decline", ImVec2{ 96, 0 }))
+		{
+			ImGui::CloseCurrentPopup();
+
+			szName = "";
+			Rect = { 0, g_pActivatedImage->m_iWidth / 2, 0, g_pActivatedImage->m_iHeight / 2 };
+			bShowAdv = false;
+			bAlpha = true;
+			bCursor = false;
+			ofs_x = 0;
+			ofs_y = 0;
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
 void DockingSpaceDisplay() noexcept
 {
-	static bool show_demo_window = false;
+	static bool show_demo_window = false, bAddSpr{};
 
 	if (show_demo_window)
 		ImGui::ShowDemoWindow(&show_demo_window);
@@ -92,11 +211,32 @@ void DockingSpaceDisplay() noexcept
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("Edit"))
+		{
+			ImGui::SeparatorText("Sprites");
+
+			bAddSpr = ImGui::MenuItem("Add new sprite");
+			ImGui::MenuItem("Enable advanced editing", nullptr, &Config::EnableAdvSprEditing);
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Options"))
+		{
+			ImGui::SeparatorText("XML");
+
+			ImGui::MenuItem("Sort sprites when importing", nullptr, &Config::ShouldSort);
+
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndMainMenuBar();
 	}
 
 	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_AutoHideTabBar);
 
+	AddSpriteDialog(bAddSpr);
+	bAddSpr = false;
 }
 
 void ImageWindowDisplay() noexcept
@@ -246,18 +386,77 @@ void SpriteWindowDisplay() noexcept
 			{
 				Helper_SpritePreviewTooltip(*pSpr);
 
-				//ImGui::SliderInt("Left", &pSpr->m_Rect.m_left, 0, pSpr->m_Rect.m_right, "%d", ImGuiSliderFlags_AlwaysClamp);
-				//ImGui::SliderInt("Right", &pSpr->m_Rect.m_right, pSpr->m_Rect.m_left, pSpr->m_Image.m_iWidth, "%d", ImGuiSliderFlags_AlwaysClamp);
-				//ImGui::SliderInt("Top", &pSpr->m_Rect.m_top, 0, pSpr->m_Rect.m_bottom, "%d", ImGuiSliderFlags_AlwaysClamp);
-				//ImGui::SliderInt("Bottom", &pSpr->m_Rect.m_bottom, pSpr->m_Rect.m_top, pSpr->m_Image.m_iHeight, "%d", ImGuiSliderFlags_AlwaysClamp);
+				ImGui::InputText("Identifier", &pSpr->m_Name, ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank);
 
-				ImGui::InputText("Identifier", &pSpr->m_Name);
+				auto const& flSpacing = ImGui::GetStyle().ItemInnerSpacing.x;
+				auto const fl = ImGui::GetFrameHeight();	// copy from ArrowButtonEx
+				ImGui::PushButtonRepeat(true);
+				ImGui::InvisibleButton("placeholder1", ImVec2{ fl, fl }); ImGui::SameLine(0.0f, flSpacing);
+				if (ImGui::ArrowButton("##up", ImGuiDir_Up) && pSpr->m_Rect.m_top > 0)
+				{
+					pSpr->m_Rect.m_top = std::clamp(pSpr->m_Rect.m_top - 1, 0, pSpr->m_Image.m_iHeight);
+					pSpr->m_Rect.m_bottom = std::clamp(pSpr->m_Rect.m_bottom - 1, 0, pSpr->m_Image.m_iHeight);
+				}
+				ImGui::SameLine(0.0f, flSpacing);
+				ImGui::InvisibleButton("placeholder3", ImVec2{ fl, fl });
+				if (ImGui::ArrowButton("##left", ImGuiDir_Left) && pSpr->m_Rect.m_left > 0)
+				{
+					pSpr->m_Rect.m_left = std::clamp(pSpr->m_Rect.m_left - 1, 0, pSpr->m_Image.m_iWidth);
+					pSpr->m_Rect.m_right = std::clamp(pSpr->m_Rect.m_right - 1, 0, pSpr->m_Image.m_iWidth);
 
-				ImGui::DragIntRange2("X", &pSpr->m_Rect.m_left, &pSpr->m_Rect.m_right, 1, 0, pSpr->m_Image.m_iWidth, "Left: %d", "Right: %d", ImGuiSliderFlags_AlwaysClamp);
-				ImGui::DragIntRange2("Y", &pSpr->m_Rect.m_top, &pSpr->m_Rect.m_bottom, 1, 0, pSpr->m_Image.m_iHeight, "Top: %d", "Bottom: %d", ImGuiSliderFlags_AlwaysClamp);
+				}
+				ImGui::SameLine(0.0f, flSpacing);
+				ImGui::InvisibleButton("placeholder4", ImVec2{ fl, fl }); ImGui::SameLine(0.0f, flSpacing);
+				if (ImGui::ArrowButton("##right", ImGuiDir_Right) && pSpr->m_Rect.m_right < pSpr->m_Image.m_iWidth)
+				{
+					pSpr->m_Rect.m_left = std::clamp(pSpr->m_Rect.m_left + 1, 0, pSpr->m_Image.m_iWidth);
+					pSpr->m_Rect.m_right = std::clamp(pSpr->m_Rect.m_right + 1, 0, pSpr->m_Image.m_iWidth);
+				}
+				ImGui::SameLine(0.0f, flSpacing);
+				ImGui::AlignTextToFramePadding();
+				ImGui::TextUnformatted("Translation");
+				ImGui::InvisibleButton("placeholder5", ImVec2{ fl, fl }); ImGui::SameLine(0.0f, flSpacing);
+				if (ImGui::ArrowButton("##down", ImGuiDir_Down) && pSpr->m_Rect.m_bottom < pSpr->m_Image.m_iHeight)
+				{
+					pSpr->m_Rect.m_top = std::clamp(pSpr->m_Rect.m_top + 1, 0, pSpr->m_Image.m_iHeight);
+					pSpr->m_Rect.m_bottom = std::clamp(pSpr->m_Rect.m_bottom + 1, 0, pSpr->m_Image.m_iHeight);
+				}
+				ImGui::PopButtonRepeat();
+
+				if (ImGui::InputInt("Left", &pSpr->m_Rect.m_left))
+					pSpr->m_Rect.m_left = std::clamp(pSpr->m_Rect.m_left, 0, pSpr->m_Rect.m_right);
+				if (ImGui::InputInt("Right", &pSpr->m_Rect.m_right))
+					pSpr->m_Rect.m_right = std::clamp(pSpr->m_Rect.m_right, pSpr->m_Rect.m_left, pSpr->m_Image.m_iWidth);
+				if (ImGui::InputInt("Top", &pSpr->m_Rect.m_top))
+					pSpr->m_Rect.m_top = std::clamp(pSpr->m_Rect.m_top, 0, pSpr->m_Rect.m_bottom);
+				if (ImGui::InputInt("Bottom", &pSpr->m_Rect.m_bottom))
+					pSpr->m_Rect.m_bottom = std::clamp(pSpr->m_Rect.m_bottom, pSpr->m_Rect.m_top, pSpr->m_Image.m_iHeight);
+
+				//ImGui::DragIntRange2("##X", &pSpr->m_Rect.m_left, &pSpr->m_Rect.m_right, 1, 0, pSpr->m_Image.m_iWidth, "Left: %d", "Right: %d", ImGuiSliderFlags_AlwaysClamp);
+				//ImGui::DragIntRange2("##Y", &pSpr->m_Rect.m_top, &pSpr->m_Rect.m_bottom, 1, 0, pSpr->m_Image.m_iHeight, "Top: %d", "Bottom: %d", ImGuiSliderFlags_AlwaysClamp);
 
 				auto const sz = fmt::format("Width: {}, Height: {}", pSpr->m_Rect.m_right - pSpr->m_Rect.m_left, pSpr->m_Rect.m_bottom - pSpr->m_Rect.m_top);
 				ImGui::TextUnformatted(sz.c_str());
+
+				if (Config::EnableAdvSprEditing)
+				{
+					ImGui::Checkbox("Alpha", &pSpr->m_IsAlpha); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Purpose unknown. Everything in vanilla is set to 'true' expect one.\nDefault: true"); ImGui::SameLine();
+					ImGui::Checkbox("Cursor", &pSpr->m_IsCursor); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Could be an indicator that this is used as mouse cursor replacement.\nDefault: false");
+
+					ImGui::InputInt("X Offset", &pSpr->m_OfsX); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Some coord used if this sprite were to used as mouse cursor???\nDefault: 0");
+					ImGui::InputInt("Y Offset", &pSpr->m_OfsY); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Some coord used if this sprite were to used as mouse cursor???\nDefault: 0");
+				}
+
+				ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0, 0.6f, 0.6f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0, 0.7f, 0.7f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0, 0.8f, 0.8f));
+				if (ImGui::Button("DELETE", ImVec2{ ImGui::GetContentRegionAvail().x, 0 }))
+				{
+					bAllowedToExist = false;
+					//std::erase(g_SelectedXML.m_rgSprites, *pSpr);	// Weird.
+					std::erase_if(g_SelectedXML.m_rgSprites, [&](Sprite_t const &spr) noexcept -> bool { return spr.m_Name == pSpr->m_Name; });
+				}
+				ImGui::PopStyleColor(3);
 			}
 			else
 				Helper_SpritePreviewTooltip(*pSpr);	// Only way to get the hover-tooltip when collapsed.

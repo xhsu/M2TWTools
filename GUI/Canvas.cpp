@@ -130,33 +130,6 @@ void Canvas::Update() noexcept
 		glEnable(GL_TEXTURE_2D);
 	}
 
-	// Update user cursor.
-
-	if (m_UpdateCursor)
-	{
-		auto const s = (std::sin(Timer::Now()) + 1) / 2.0;
-		auto const [r, g, b] = HueToRGB(s * 360);
-
-		glDisable(GL_TEXTURE_2D);
-		glColor3d(r, g, b);
-
-		glBegin(GL_QUADS);
-		glVertex2d(m_vecCursorPos.x - 1, m_vecCursorPos.y - 16);
-		glVertex2d(m_vecCursorPos.x + 1, m_vecCursorPos.y - 16);
-		glVertex2d(m_vecCursorPos.x + 1, m_vecCursorPos.y + 16);
-		glVertex2d(m_vecCursorPos.x - 1, m_vecCursorPos.y + 16);
-		glEnd();
-
-		glBegin(GL_QUADS);
-		glVertex2d(m_vecCursorPos.x - 16, m_vecCursorPos.y - 1);
-		glVertex2d(m_vecCursorPos.x + 16, m_vecCursorPos.y - 1);
-		glVertex2d(m_vecCursorPos.x + 16, m_vecCursorPos.y + 1);
-		glVertex2d(m_vecCursorPos.x - 16, m_vecCursorPos.y + 1);
-		glEnd();
-
-		glEnable(GL_TEXTURE_2D);
-	}
-
 	if (m_ShouldDrawGizmos)
 	{
 		glDisable(GL_TEXTURE_2D);
@@ -195,6 +168,33 @@ void Canvas::Update() noexcept
 			glVertex2d(pSpr->m_Rect.m_left, pSpr->m_Rect.m_bottom + 1);
 			glEnd();
 		}
+
+		glEnable(GL_TEXTURE_2D);
+	}
+
+	// Update user cursor.
+
+	if (m_UpdateCursor)
+	{
+		auto const s = (std::sin(Timer::Now()) + 1) / 2.0;
+		auto const [r, g, b] = HueToRGB(s * 360);
+
+		glDisable(GL_TEXTURE_2D);
+		glColor3d(r, g, b);
+
+		glBegin(GL_QUADS);
+		glVertex2d(m_vecCursorPos.x - 1, m_vecCursorPos.y - 16);
+		glVertex2d(m_vecCursorPos.x + 1, m_vecCursorPos.y - 16);
+		glVertex2d(m_vecCursorPos.x + 1, m_vecCursorPos.y + 16);
+		glVertex2d(m_vecCursorPos.x - 1, m_vecCursorPos.y + 16);
+		glEnd();
+
+		glBegin(GL_QUADS);
+		glVertex2d(m_vecCursorPos.x - 16, m_vecCursorPos.y - 1);
+		glVertex2d(m_vecCursorPos.x + 16, m_vecCursorPos.y - 1);
+		glVertex2d(m_vecCursorPos.x + 16, m_vecCursorPos.y + 1);
+		glVertex2d(m_vecCursorPos.x - 16, m_vecCursorPos.y + 1);
+		glEnd();
 
 		glEnable(GL_TEXTURE_2D);
 	}
