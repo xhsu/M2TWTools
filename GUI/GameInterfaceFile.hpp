@@ -22,6 +22,9 @@ struct rect_t final
 			;
 	}
 
+	inline constexpr auto Width() const noexcept { return m_right - m_left; }
+	inline constexpr auto Height() const noexcept { return m_bottom - m_top; }
+
 	// Thanks, C++20.
 	inline constexpr auto operator<=> (rect_t const &) const noexcept = default;
 };

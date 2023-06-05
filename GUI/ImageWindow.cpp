@@ -29,6 +29,24 @@ GameInterfaceFile_t g_SelectedXML;
 ImVec2 g_vecScope(0, 0);
 fs::path g_CurrentPath;
 
+inline void Helper_SpritePreviewTooltip(Sprite_t const &spr) noexcept
+{
+	if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+	{
+		auto const flWidth = static_cast<float>(spr.m_Image.m_iWidth);
+		auto const flHeight = static_cast<float>(spr.m_Image.m_iHeight);
+
+		ImGui::Image(
+			(void *)spr.m_Image.m_iTexture,
+			ImVec2{ (float)spr.m_Rect.Width(), (float)spr.m_Rect.Height() },
+			ImVec2{ (float)spr.m_Rect.m_left / flWidth, (float)spr.m_Rect.m_top / flHeight },
+			ImVec2{ (float)spr.m_Rect.m_right / flWidth, (float)spr.m_Rect.m_bottom / flHeight }
+		);
+
+		ImGui::EndTooltip();
+	}
+}
+
 void DockingSpaceDisplay() noexcept
 {
 	static bool show_demo_window = false;
@@ -143,12 +161,16 @@ void ImageWindowDisplay() noexcept
 
 	if (bUpdateSelectInfo)
 	{
-		Canvas::m_SelectedSprites =
+		if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+			Canvas::m_SelectedSprites.clear();
+
+		Canvas::m_SelectedSprites.append_range(
 			g_SelectedXML.m_rgSprites
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return !std::ranges::contains(Canvas::m_SelectedSprites, &spr); })
 			| std::views::transform([](Sprite_t &spr) noexcept -> Sprite_t *{ return &spr; })
-			| std::ranges::to<vector>();
+		);
 	}
 
 	// Canvas will update post-render on itself.
@@ -169,35 +191,34 @@ void OperationWindowDisplay() noexcept
 	ImGui::Begin("Actions");
 
 	{
+		ImGui::SeparatorText("Hovering Items");
+
+		bool bAny{ false };
+
+		for (auto &&sz :
+			g_SelectedXML.m_rgSprites
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
+			| std::views::transform([](Sprite_t const &spr) noexcept -> string const &{ return spr.m_Name; })
+			)
+		{
+			ImGui::BulletText(sz.c_str());
+			bAny = true;
+		}
+
+		if (!bAny)
+			ImGui::BulletText("[NONE]");
+
+		ImGui::SeparatorText("Selected Items");
+
+		for (auto &&pSpr : Canvas::m_SelectedSprites)
+		{
+			ImGui::BulletText(pSpr->m_Name.c_str());
+			Helper_SpritePreviewTooltip(*pSpr);
+		}
+
 		if (Canvas::m_SelectedSprites.empty())
-		{
-			ImGui::SeparatorText("Hovering Items");
-
-			bool bAny{ false };
-
-			for (auto &&sz :
-				g_SelectedXML.m_rgSprites
-				| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
-				| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
-				| std::views::transform([](Sprite_t const &spr) noexcept -> string const &{ return spr.m_Name; })
-				)
-			{
-				ImGui::BulletText(sz.c_str());
-				bAny = true;
-			}
-
-			if (!bAny)
-				ImGui::BulletText("[None]");
-		}
-		else
-		{
-			ImGui::SeparatorText("Selected Items");
-
-			for (auto &&pSpr : Canvas::m_SelectedSprites)
-			{
-				ImGui::BulletText(pSpr->m_Name.c_str());
-			}
-		}
+			ImGui::BulletText("[NONE]");
 
 		ImGui::SeparatorText("Image Manipulation");
 
@@ -223,6 +244,8 @@ void SpriteWindowDisplay() noexcept
 
 			if (ImGui::CollapsingHeader(pSpr->m_Name.c_str(), &bAllowedToExist, ImGuiTreeNodeFlags_DefaultOpen))
 			{
+				Helper_SpritePreviewTooltip(*pSpr);
+
 				//ImGui::SliderInt("Left", &pSpr->m_Rect.m_left, 0, pSpr->m_Rect.m_right, "%d", ImGuiSliderFlags_AlwaysClamp);
 				//ImGui::SliderInt("Right", &pSpr->m_Rect.m_right, pSpr->m_Rect.m_left, pSpr->m_Image.m_iWidth, "%d", ImGuiSliderFlags_AlwaysClamp);
 				//ImGui::SliderInt("Top", &pSpr->m_Rect.m_top, 0, pSpr->m_Rect.m_bottom, "%d", ImGuiSliderFlags_AlwaysClamp);
@@ -236,6 +259,8 @@ void SpriteWindowDisplay() noexcept
 				auto const sz = fmt::format("Width: {}, Height: {}", pSpr->m_Rect.m_right - pSpr->m_Rect.m_left, pSpr->m_Rect.m_bottom - pSpr->m_Rect.m_top);
 				ImGui::TextUnformatted(sz.c_str());
 			}
+			else
+				Helper_SpritePreviewTooltip(*pSpr);	// Only way to get the hover-tooltip when collapsed.
 
 			if (!bAllowedToExist)
 				it = Canvas::m_SelectedSprites.erase(it);
