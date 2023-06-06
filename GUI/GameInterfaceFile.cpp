@@ -40,6 +40,18 @@ string GameInterfaceFile_t::Decompile(fs::path const& Path) noexcept
 	if (!f)
 		return "";
 
+	if (auto const szFileName = Path.filename().u8string(); szFileName.contains("battle"))
+		m_EnumerationName = "BATTLE_SPRITES";
+	else if (szFileName.contains("shared"))
+		m_EnumerationName = "SHARED_SPRITES";
+	else if (szFileName.contains("strategy"))
+		m_EnumerationName = "STRATEGY_SPRITES";
+	else
+	{
+		m_EnumerationName = "UNKNOWN_SPRITES";
+		fmt::print(fg(fmt::color::light_golden_rod_yellow), "Unknown file name: '{}'\nPlease do mind this applcation only reconize these following file name: 'battle', 'shared' and 'strategy'.", szFileName);
+	}
+
 	int32_t iPages{}, iSprites{};
 	fread(&m_Version, sizeof(int32_t), 1, f);
 	fread(&iPages, sizeof(int32_t), 1, f);

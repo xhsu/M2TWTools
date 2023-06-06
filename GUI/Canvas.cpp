@@ -1,5 +1,6 @@
 #include "Canvas.hpp"
 #include "Timer.hpp"
+#include "Window.hpp"
 
 #include <tuple>
 
