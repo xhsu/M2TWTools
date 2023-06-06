@@ -6,10 +6,12 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include <array>
 #include <filesystem>
 #include <ranges>
 #include <set>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 #include "Canvas.hpp"
@@ -17,19 +19,29 @@
 #include "Image.hpp"
 #include "OpenFile.hpp"
 
+import UtlString;
+
+using std::array;
+using std::set;
 using std::string;
 using std::string_view;
+using std::tuple;
 using std::vector;
-using std::set;
 
 namespace fs = std::filesystem;
 
 set<Image_t> g_rgImages;
 GameInterfaceFile_t g_SelectedXML;
 fs::path g_CurrentPath;
+fs::path::string_type g_ImageFileJmp;
 
 ImVec2 g_vecImgOrigin;	// Left-top conor of the image.
 float g_flScope = 1;	// Scoping image
+
+namespace Window
+{
+	inline bool SpritesList{ false };
+}
 
 namespace Config
 {
@@ -201,7 +213,7 @@ void AboutDialog(bool bShow) noexcept
 
 	if (ImGui::BeginPopupModal("About...", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::TextUnformatted("Version 1.0");
+		ImGui::TextUnformatted("Version 1.1");
 		ImGui::TextUnformatted("By: Hydrogenium, @" __DATE__);
 		ImGui::TextUnformatted("Website: https://github.com/xhsu/M2TWTools/releases");
 
@@ -224,11 +236,14 @@ void AboutDialog(bool bShow) noexcept
 
 void DockingSpaceDisplay() noexcept
 {
+#ifdef _DEBUG
 	static bool show_demo_window = false;
-	bool bAddSpr{}, bShowAbout{};
 
 	if (show_demo_window)
 		ImGui::ShowDemoWindow(&show_demo_window);
+#endif
+
+	bool bAddSpr{}, bShowAbout{};
 
 	if (ImGui::BeginMainMenuBar())
 	{
@@ -292,11 +307,43 @@ void DockingSpaceDisplay() noexcept
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::BeginMenu("Options"))
+		if (ImGui::BeginMenu("Utilities"))
 		{
 			ImGui::SeparatorText("XML");
 
 			ImGui::MenuItem("Sort sprites when importing", nullptr, &Config::ShouldSort);
+
+			ImGui::SeparatorText("SD");
+
+			ImGui::MenuItem("Compile", nullptr, nullptr, false);
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				ImGui::SetTooltip(
+					R"(This program does not provide such function.
+
+The game engine will do the compilation job at its launch if you make sure both .xml and .sd files exist
+and the "last modified" attribute of .xml is NEWER than its .sd counterpart.)"
+				);
+			}
+
+			if (ImGui::MenuItem("Decompile", "Ctrl+D"))
+			{
+				if (auto pPath = Win32_OpenFileDialog(L"Select Compiled UI File", L"*.sd", L"M2TW UI (*.sd)"); pPath)
+				{
+					system("cls");
+					fmt::print("File decompiled: {}\n", pPath->u8string());
+					g_CurrentPath = g_SelectedXML.Decompile(*pPath);
+
+					g_rgImages = g_SelectedXML.Images();
+
+					g_pActivatedImage = nullptr;
+					Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
+				}
+			}
+
+			ImGui::SeparatorText("Window");
+
+			ImGui::MenuItem("Search Sprite", nullptr, &Window::SpritesList);
 
 			ImGui::EndMenu();
 		}
@@ -321,7 +368,11 @@ void ImageWindowDisplay() noexcept
 	{
 		for (auto &&Img : g_rgImages)
 		{
-			if (ImGui::BeginTabItem(Img.Name().c_str()))
+			auto const bitsFlags =
+				(!g_ImageFileJmp.empty() && Img.m_Path.native() == g_ImageFileJmp) ?
+				ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+
+			if (ImGui::BeginTabItem(Img.Name().c_str(), nullptr, bitsFlags))
 			{
 				g_pActivatedImage = &Img;
 				Canvas::m_vecCursorPos = ImGui::GetMousePos() - ImGui::GetCursorScreenPos() - ImVec2{ ImGui::GetScrollX(), ImGui::GetScrollY() };
@@ -566,6 +617,73 @@ void SpriteWindowDisplay() noexcept
 	else
 	{
 		ImGui::TextUnformatted("Click on image to select sprites!");
+	}
+
+	ImGui::End();
+}
+
+void SearchSpriteWindowDisplay() noexcept
+{
+	if (!Window::SpritesList)
+		return;
+
+	ImGui::Begin("Search Sprite...", &Window::SpritesList, ImGuiWindowFlags_AlwaysAutoResize);
+
+	static int iFunctionIndex{ 0 };
+	ImGui::BeginDisabled(iFunctionIndex == 0);
+
+	static string szSearch{};
+	ImGui::InputText("Search", &szSearch, ImGuiInputTextFlags_CharsUppercase);
+
+	if (iFunctionIndex == 0 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGui::SetTooltip("All sprites are listed when switched to 'NONE' mode.");
+
+	ImGui::EndDisabled();
+
+	static vector<string_view> rgszSearchCell{};
+	rgszSearchCell = UTIL_Split(szSearch, " \t\f\v\n\r") | std::ranges::to<vector>();
+
+	static constexpr array rgfnFilters
+	{
+		tuple{ 0, "NONE", +[](Sprite_t const& spr) constexpr noexcept -> bool { return true; }, },	// everything
+		tuple{ 1, "OR", +[](Sprite_t const& spr) noexcept -> bool { for (auto&& sz : rgszSearchCell) if (spr.m_Name.contains(sz)) return true; return false; },},	// OR
+		tuple{ 2, "AND", +[](Sprite_t const& spr) noexcept -> bool { for (auto&& sz : rgszSearchCell) if (!spr.m_Name.contains(sz)) return false; return true; },},	// AND
+	};
+
+	static bool(*pfnFilter)(Sprite_t const&) { std::get<2>(rgfnFilters[0]) };
+	for (auto&& [idx, psz, pfn] : rgfnFilters)
+	{
+		if (ImGui::RadioButton(psz, &iFunctionIndex, idx))
+			pfnFilter = pfn;
+
+		ImGui::SameLine();
+	}
+
+	ImGui::NewLine();
+	ImGui::Separator();
+
+	if (ImGui::BeginListBox("##search_result_list_box", ImVec2(-FLT_MIN, ImGui::GetContentRegionAvail().y)))
+	{
+		for (auto&& spr :
+			g_SelectedXML.m_rgSprites
+			| std::views::filter(pfnFilter)
+			)
+		{
+			if (auto const bAlreadySelected = std::ranges::contains(Canvas::m_SelectedSprites, &spr);
+				ImGui::Selectable(spr.m_Name.c_str(), bAlreadySelected))
+			{
+				if (!bAlreadySelected)
+					Canvas::m_SelectedSprites.emplace_back(&spr);
+				else
+					std::erase(Canvas::m_SelectedSprites, &spr);
+
+				g_ImageFileJmp = spr.m_Image.m_Path.native();
+			}
+
+			Helper_SpritePreviewTooltip(spr);
+		}
+
+		ImGui::EndListBox();
 	}
 
 	ImGui::End();

@@ -21,6 +21,7 @@ extern void DockingSpaceDisplay() noexcept;
 extern void ImageWindowDisplay() noexcept;
 extern void OperationWindowDisplay() noexcept;
 extern void SpriteWindowDisplay() noexcept;
+extern void SearchSpriteWindowDisplay() noexcept;
 
 inline constexpr char g_Ini[] =
 R"(
@@ -193,6 +194,7 @@ int main(int argc, char *argv[]) noexcept
 		ImageWindowDisplay();
 		OperationWindowDisplay();
 		SpriteWindowDisplay();
+		SearchSpriteWindowDisplay();
 
 		// Rendering
 		ImGui::Render();

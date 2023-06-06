@@ -1,5 +1,7 @@
 #include "GameInterfaceFile.hpp"
 
+//#include <>
+
 #include <fmt/color.h>
 #include <stb_image.h>
 
@@ -21,12 +23,102 @@ using std::string;
 using std::tuple;
 using std::vector;
 
+template <typename T>
+inline T g_Dummy{};
+
 set<Image_t> GameInterfaceFile_t::Images() const noexcept
 {
 	return
 		m_rgSprites
 		| std::views::transform([](Sprite_t const &spr) noexcept -> Image_t { return spr.m_Image; })
 		| std::ranges::to<set>();
+}
+
+string GameInterfaceFile_t::Decompile(fs::path const& Path) noexcept
+{
+	auto f = _wfopen(Path.c_str(), L"rb");
+	if (!f)
+		return "";
+
+	int32_t iPages{}, iSprites{};
+	fread(&m_Version, sizeof(int32_t), 1, f);
+	fread(&iPages, sizeof(int32_t), 1, f);
+	fread(&iSprites, sizeof(int32_t), 1, f);
+
+	vector<Image_t> rgPages{};
+	rgPages.reserve(iPages);
+
+	m_rgSprites.clear();
+	m_rgSprites.reserve(iSprites);
+
+	auto const szParentPath = Path.parent_path();
+
+	for (auto i = 0; i < iPages; ++i)
+	{
+		uint32_t iStrLen{};
+		fread(&iStrLen, sizeof(uint32_t), 1, f);
+
+		string szPageName(iStrLen + 1, '\0');
+		fread(szPageName.data(), sizeof(char), iStrLen + 1, f);	// It actually reserved one extra '\0'
+		rgPages.emplace_back(szParentPath / L"southern_european" / L"interface" / szPageName);
+
+		fread(&g_Dummy<int32_t>, sizeof(int32_t), 1, f);
+		fread(&g_Dummy<int32_t>, sizeof(int32_t), 1, f);
+
+		fread(&g_Dummy<uint32_t>, sizeof(uint32_t), 1, f);
+		fseek(f, g_Dummy<uint32_t>, SEEK_CUR);
+	}
+
+	for (auto i = 0; i < iSprites; ++i)
+	{
+		uint32_t iStrLen{};
+		fread(&iStrLen, sizeof(uint32_t), 1, f);
+
+		string szIdentifer(iStrLen + 1, '\0');
+		fread(szIdentifer.data(), sizeof(char), iStrLen, f);
+
+		int16_t iIndex{};
+		fread(&iIndex, sizeof(int16_t), 1, f);
+
+		int16_t iLeft{}, iRight{}, iTop{}, iBottom{};
+		fread(&iLeft, sizeof(int16_t), 1, f);
+		fread(&iRight, sizeof(int16_t), 1, f);
+		fread(&iTop, sizeof(int16_t), 1, f);
+		fread(&iBottom, sizeof(int16_t), 1, f);
+
+		bool bAlpha{}, bCursor{};
+		fread(&bAlpha, sizeof(bool), 1, f);
+		fread(&bCursor, sizeof(bool), 1, f);
+
+		int16_t iOffsets[2]{};
+		fread(&iOffsets, sizeof(int16_t), 2, f);
+
+		m_rgSprites.emplace_back(
+			Sprite_t
+			{
+				.m_Name{ std::move(szIdentifer) },
+				.m_Image{ rgPages[iIndex] },
+				.m_Rect{ iLeft, iRight, iTop, iBottom },
+				.m_OfsX{ iOffsets[0] },
+				.m_OfsY{ iOffsets[1] },
+				.m_IsAlpha{ bAlpha },
+				.m_IsCursor{ bCursor },
+			}
+		);
+	}
+
+	fclose(f);
+
+	tinyxml2::XMLDocument xml;
+	Export(&xml);
+
+	auto const szDecompileResultPath = fs::path{ Path.native() + L".xml" }.u8string();
+	if (auto const res = xml.SaveFile(szDecompileResultPath.c_str()); res != tinyxml2::XML_SUCCESS)
+		fmt::print(fg(fmt::color::light_golden_rod_yellow), "Cannot save decompile result: '{}'\nError code: {}\n", szDecompileResultPath, std::to_underlying(res));
+	else
+		fmt::print("Decompile result saved as: {}\n", szDecompileResultPath);
+
+	return szDecompileResultPath;
 }
 
 void GameInterfaceFile_t::Import(fs::path const& Path) noexcept

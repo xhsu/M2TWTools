@@ -71,6 +71,7 @@ struct GameInterfaceFile_t final
 
 	std::set<Image_t> Images() const noexcept;
 
+	std::string Decompile(std::filesystem::path const& Path) noexcept;
 	void Import(std::filesystem::path const &Path) noexcept;
 	void Export(tinyxml2::XMLDocument *xml) const noexcept;
 
