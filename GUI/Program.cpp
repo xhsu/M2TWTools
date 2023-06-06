@@ -15,6 +15,7 @@
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
 #include "Canvas.hpp"
+#include "Preview.hpp"
 #include "Timer.hpp"
 
 extern void DockingSpaceDisplay() noexcept;
@@ -139,6 +140,7 @@ int main(int argc, char *argv[]) noexcept
 
 	// my init
 	Canvas::Initialize();
+	Preview::Initilize();
 	Timer::Start();
 
 	// Load Fonts
@@ -195,6 +197,7 @@ int main(int argc, char *argv[]) noexcept
 		OperationWindowDisplay();
 		SpriteWindowDisplay();
 		SearchSpriteWindowDisplay();
+		Preview::GUI();
 
 		// Rendering
 		ImGui::Render();

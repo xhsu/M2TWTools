@@ -46,14 +46,12 @@ inline void Helper_SpritePreviewTooltip(Sprite_t const &spr) noexcept
 {
 	if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
 	{
-		auto const flWidth = static_cast<float>(spr.m_Image.m_iWidth);
-		auto const flHeight = static_cast<float>(spr.m_Image.m_iHeight);
+		auto const [uv0, uv1] = spr.UV();
 
 		ImGui::Image(
 			(void *)spr.m_Image.m_iTexture,
 			ImVec2{ (float)spr.m_Rect.Width(), (float)spr.m_Rect.Height() },
-			ImVec2{ (float)spr.m_Rect.m_left / flWidth, (float)spr.m_Rect.m_top / flHeight },
-			ImVec2{ (float)spr.m_Rect.m_right / flWidth, (float)spr.m_Rect.m_bottom / flHeight }
+			uv0, uv1
 		);
 
 		ImGui::EndTooltip();
@@ -328,6 +326,7 @@ and the "last modified" attribute of .xml is NEWER than its .sd counterpart.)"
 			ImGui::SeparatorText("Window");
 
 			ImGui::MenuItem("Search Sprite", nullptr, &Window::SpritesList);
+			ImGui::MenuItem("Preview UI", nullptr, &Window::Preview);
 
 			ImGui::EndMenu();
 		}
@@ -603,7 +602,13 @@ void SpriteWindowDisplay() noexcept
 	}
 	else
 	{
-		ImGui::TextUnformatted("Click on image to select sprites!");
+		if (g_CurrentXml.Empty())
+		{
+			ImGui::TextWrapped(R"("Application" => "Open" to load an XML)");
+			ImGui::TextWrapped(R"(Alternatively, you may use "Utility" => "Decompile" to get one.)");
+		}
+		else
+			ImGui::TextUnformatted("Click on image to select sprites!");
 	}
 
 	ImGui::End();

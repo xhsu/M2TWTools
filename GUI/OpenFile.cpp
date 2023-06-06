@@ -36,3 +36,16 @@ std::optional<std::filesystem::path> Win32_SaveFileDialog(wchar_t const *pszTitl
 
 	return std::nullopt;
 }
+
+std::optional<std::filesystem::path> Win32_SelectFolderDialog(wchar_t const *pszTitle, wchar_t const* pszDefaultPath) noexcept
+{
+	auto const folder = tinyfd_selectFolderDialogW(
+		pszTitle,
+		pszDefaultPath
+	);
+
+	if (folder)
+		return folder;
+
+	return std::nullopt;
+}

@@ -12,4 +12,7 @@ namespace Preview
 	void Initilize() noexcept;
 	void Gather() noexcept;
 	void Draw() noexcept;
+	void GUI() noexcept;
+
+	[[nodiscard]] bool Ready() noexcept;
 }

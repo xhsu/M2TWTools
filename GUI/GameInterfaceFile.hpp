@@ -42,6 +42,19 @@ struct Sprite_t final
 	int32_t m_OfsX{}, m_OfsY{};
 	bool m_IsAlpha{ true }, m_IsCursor{ false };
 
+	inline constexpr std::pair<ImVec2, ImVec2> UV() const noexcept
+	{
+		auto const flWidth = static_cast<float>(m_Image.m_iWidth);
+		auto const flHeight = static_cast<float>(m_Image.m_iHeight);
+
+		return std::pair
+		{
+			ImVec2{ (float)m_Rect.m_left / flWidth, (float)m_Rect.m_top / flHeight },
+			ImVec2{ (float)m_Rect.m_right / flWidth, (float)m_Rect.m_bottom / flHeight },
+		};
+	}
+	inline constexpr std::pair<int32_t, int32_t> WH() const noexcept { return std::pair{ m_Rect.Width(), m_Rect.Height() }; }
+
 	// Only name make difference. Just like in game.
 	inline constexpr auto operator<=> (Sprite_t const &rhs) const noexcept { return m_Name <=> rhs.m_Name; }
 	inline constexpr auto operator== (Sprite_t const &rhs) const noexcept { return m_Name == m_Name; }
