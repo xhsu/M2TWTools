@@ -26,7 +26,7 @@
     <ClCompile Include="stb_impl.c">
       <Filter>stb</Filter>
     </ClCompile>
-    <ClCompile Include="ImageWindow.cpp" />
+    <ClCompile Include="Window.cpp" />
     <ClCompile Include="..\..\imgui\backends\imgui_impl_glfw.cpp">
       <Filter>ImGui\backends</Filter>
     </ClCompile>
@@ -54,6 +54,7 @@
     <ClCompile Include="..\..\Hydrogenium\UtlString.ixx">
       <Filter>Hydrogenium</Filter>
     </ClCompile>
+    <ClCompile Include="Preview.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ImGui">
@@ -140,6 +141,8 @@
     <ClInclude Include="..\tinyfiledialogs\tinyfiledialogs.h">
       <Filter>tinyfiledialogs</Filter>
     </ClInclude>
+    <ClInclude Include="Preview.hpp" />
+    <ClInclude Include="Window.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis">

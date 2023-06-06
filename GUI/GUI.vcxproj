@@ -97,8 +97,9 @@
     <ClCompile Include="Canvas.cpp" />
     <ClCompile Include="GameInterfaceFile.cpp" />
     <ClCompile Include="Image.cpp" />
-    <ClCompile Include="ImageWindow.cpp" />
+    <ClCompile Include="Window.cpp" />
     <ClCompile Include="OpenFile.cpp" />
+    <ClCompile Include="Preview.cpp" />
     <ClCompile Include="Program.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="stb_impl.c" />
@@ -124,8 +125,10 @@
     <ClInclude Include="Image.hpp" />
     <ClInclude Include="ImGuiConfig.hpp" />
     <ClInclude Include="OpenFile.hpp" />
+    <ClInclude Include="Preview.hpp" />
     <ClInclude Include="Shader.hpp" />
     <ClInclude Include="Timer.hpp" />
+    <ClInclude Include="Window.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis" />

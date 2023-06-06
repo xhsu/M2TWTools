@@ -18,6 +18,7 @@
 #include "GameInterfaceFile.hpp"
 #include "Image.hpp"
 #include "OpenFile.hpp"
+#include "Window.hpp"
 
 import UtlString;
 
@@ -30,23 +31,6 @@ using std::vector;
 
 namespace fs = std::filesystem;
 
-set<Image_t> g_rgImages;
-GameInterfaceFile_t g_SelectedXML;
-fs::path g_CurrentPath;
-fs::path::string_type g_ImageFileJmp;
-
-ImVec2 g_vecImgOrigin;	// Left-top conor of the image.
-float g_flScope = 1;	// Scoping image
-
-namespace Window
-{
-	inline bool SpritesList{ false };
-}
-
-namespace Config
-{
-	inline bool EnableAdvSprEditing = false;
-}
 
 inline void UpdateScopeValue(float delta = 0.f) noexcept
 {
@@ -163,7 +147,7 @@ void AddSpriteDialog(bool bShow) noexcept
 		ImGui::NewLine();
 		if (Helper_AlignedButton("Accept", ImVec2{ 96, 0 }))
 		{
-			auto &Sprite = g_SelectedXML.m_rgSprites.emplace_back(Sprite_t{
+			auto &Sprite = g_CurrentXml.m_rgSprites.emplace_back(Sprite_t{
 				.m_Name{ std::move(szName) },
 				.m_Image{ *g_pActivatedImage },
 				.m_Rect{ Rect },
@@ -258,9 +242,9 @@ void DockingSpaceDisplay() noexcept
 					g_CurrentPath = *pPath;
 
 					fmt::print("File selected: {}\n", pPath->u8string());
-					g_SelectedXML.Import(*pPath);
+					g_CurrentXml.Import(*pPath);
 
-					g_rgImages = g_SelectedXML.Images();
+					g_rgImages = g_CurrentXml.Images();
 
 					g_pActivatedImage = nullptr;
 					Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
@@ -270,7 +254,7 @@ void DockingSpaceDisplay() noexcept
 			if (ImGui::MenuItem("Save", "Ctrl+S") && fs::exists(g_CurrentPath))
 			{
 				tinyxml2::XMLDocument xml;
-				g_SelectedXML.Export(&xml);
+				g_CurrentXml.Export(&xml);
 
 				xml.SaveFile(g_CurrentPath.u8string().c_str());
 			}
@@ -281,7 +265,7 @@ void DockingSpaceDisplay() noexcept
 				if (auto pOutPath = Win32_SaveFileDialog(L"Save as...", DefaultOut.c_str(), L"*.xml", L"Extensible Markup Language (*.xml)"); pOutPath)
 				{
 					tinyxml2::XMLDocument xml;
-					g_SelectedXML.Export(&xml);
+					g_CurrentXml.Export(&xml);
 
 					xml.SaveFile(pOutPath->u8string().c_str());
 				}
@@ -332,9 +316,9 @@ and the "last modified" attribute of .xml is NEWER than its .sd counterpart.)"
 				{
 					system("cls");
 					fmt::print("File decompiled: {}\n", pPath->u8string());
-					g_CurrentPath = g_SelectedXML.Decompile(*pPath);
+					g_CurrentPath = g_CurrentXml.Decompile(*pPath);
 
-					g_rgImages = g_SelectedXML.Images();
+					g_rgImages = g_CurrentXml.Images();
 
 					g_pActivatedImage = nullptr;
 					Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
@@ -371,6 +355,9 @@ void ImageWindowDisplay() noexcept
 			auto const bitsFlags =
 				(!g_ImageFileJmp.empty() && Img.m_Path.native() == g_ImageFileJmp) ?
 				ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+
+			if (bitsFlags & ImGuiTabItemFlags_SetSelected &&!g_ImageFileJmp.empty())
+				g_ImageFileJmp.clear();
 
 			if (ImGui::BeginTabItem(Img.Name().c_str(), nullptr, bitsFlags))
 			{
@@ -446,7 +433,7 @@ void ImageWindowDisplay() noexcept
 			Canvas::m_SelectedSprites.clear();
 
 		Canvas::m_SelectedSprites.append_range(
-			g_SelectedXML.m_rgSprites
+			g_CurrentXml.m_rgSprites
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return !std::ranges::contains(Canvas::m_SelectedSprites, &spr); })
@@ -457,7 +444,7 @@ void ImageWindowDisplay() noexcept
 	// Canvas will update post-render on itself.
 
 	Canvas::m_Gizmos =
-		g_SelectedXML.m_rgSprites
+		g_CurrentXml.m_rgSprites
 		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
 		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return !std::ranges::contains(Canvas::m_SelectedSprites, &spr); })
 		| std::views::transform([](Sprite_t const &spr) noexcept { return spr.m_Rect; })
@@ -477,7 +464,7 @@ void OperationWindowDisplay() noexcept
 		bool bAny{ false };
 
 		for (auto &&sz :
-			g_SelectedXML.m_rgSprites
+			g_CurrentXml.m_rgSprites
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
 			| std::views::transform([](Sprite_t const &spr) noexcept -> string const &{ return spr.m_Name; })
@@ -601,7 +588,7 @@ void SpriteWindowDisplay() noexcept
 				{
 					bAllowedToExist = false;
 					//std::erase(g_SelectedXML.m_rgSprites, *pSpr);	// Weird.
-					std::erase_if(g_SelectedXML.m_rgSprites, [&](Sprite_t const &spr) noexcept -> bool { return spr.m_Name == pSpr->m_Name; });
+					std::erase_if(g_CurrentXml.m_rgSprites, [&](Sprite_t const &spr) noexcept -> bool { return spr.m_Name == pSpr->m_Name; });
 				}
 				ImGui::PopStyleColor(3);
 			}
@@ -665,7 +652,7 @@ void SearchSpriteWindowDisplay() noexcept
 	if (ImGui::BeginListBox("##search_result_list_box", ImVec2(-FLT_MIN, ImGui::GetContentRegionAvail().y)))
 	{
 		for (auto&& spr :
-			g_SelectedXML.m_rgSprites
+			g_CurrentXml.m_rgSprites
 			| std::views::filter(pfnFilter)
 			)
 		{
