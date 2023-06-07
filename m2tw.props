@@ -22,6 +22,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/permissive- /volatile:iso /Zc:inline /Zc:preprocessor /Zc:lambda /Zc:__cplusplus /Zc:externConstexpr /Zc:enumTypes /Zc:templateScope /utf-8 /Zc:char8_t- %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />
