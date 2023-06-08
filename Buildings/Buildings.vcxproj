@@ -76,10 +76,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Modules\battle_models.cpp" />
     <ClCompile Include="Buildings.cpp" />
     <ClCompile Include="Requirements.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Modules\battle_models.hpp" />
     <ClInclude Include="Requirements.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

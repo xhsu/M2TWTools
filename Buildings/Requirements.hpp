@@ -29,6 +29,9 @@ namespace Requirements
 		"resource"sv,
 	};
 
+	//								   0            4
+	inline constexpr array Parameters{ 1, 2, 2, -1, 1, 2, 1 };
+
 	using _Impl_IndexType = tuple<
 		array<string, 1>,	// 0
 		array<string, 2>,

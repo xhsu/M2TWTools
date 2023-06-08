@@ -3,8 +3,19 @@
   <ItemGroup>
     <ClCompile Include="Buildings.cpp" />
     <ClCompile Include="Requirements.cpp" />
+    <ClCompile Include="..\Modules\battle_models.cpp">
+      <Filter>Modules</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Requirements.hpp" />
+    <ClInclude Include="..\Modules\battle_models.hpp">
+      <Filter>Modules</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Modules">
+      <UniqueIdentifier>{f66d9106-a2e8-405d-bd6e-292830d9b8a9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

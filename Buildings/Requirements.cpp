@@ -58,16 +58,16 @@ namespace Requirements
 
 	CCell Deserialize(vector<string_view> const& Verses) noexcept
 	{
-		bool const bInversed{ Verses[0] == "not" };
-		size_t const iParsePos = bInversed ? 1 : 0;
+		bool const bInv{ Verses[0] == "not" };
+		size_t const iPos = bInv ? 1 : 0;
 
-		if (Verses[iParsePos] == Keywords[0])
-			return CBuildingPresent{ .m_Inverted{bInversed}, .m_Arguments{ (string)Verses[iParsePos + 1] } };
-		else if (Verses[iParsePos] == Keywords[1])
-			return CBuildingMinLevel{ .m_Inverted{bInversed}, .m_Arguments{ (string)Verses[iParsePos + 1], (string)Verses[iParsePos + 2] } };
-		else if (Verses[iParsePos] == Keywords[2])
-			return CEventCounter{ .m_Inverted{bInversed}, .m_Arguments{ (string)Verses[iParsePos + 1], (string)Verses[iParsePos + 2] } };
-		else if (Verses[iParsePos] == Keywords[3])
+		if (Verses[iPos] == Keywords[0])
+			return CBuildingPresent{ .m_Inverted{bInv}, .m_Arguments{ (string)Verses[iPos + 1] } };
+		else if (Verses[iPos] == Keywords[1])
+			return CBuildingMinLevel{ .m_Inverted{bInv}, .m_Arguments{ (string)Verses[iPos + 1], (string)Verses[iPos + 2] } };
+		else if (Verses[iPos] == Keywords[2])
+			return CEventCounter{ .m_Inverted{bInv}, .m_Arguments{ (string)Verses[iPos + 1], (string)Verses[iPos + 2] } };
+		else if (Verses[iPos] == Keywords[3])
 		{
 			auto pos1 = std::ranges::find(Verses, "{") + 1;
 			auto pos2 = std::ranges::find(Verses, "}");
@@ -76,14 +76,14 @@ namespace Requirements
 			if (auto const endpos = Verses.end(); pos1 == endpos || pos2 == endpos || (pos2 - pos1) <= 1)
 				std::terminate();
 
-			return CFactions{ .m_Inverted{bInversed}, .m_Arguments{ pos1, pos2 } };
+			return CFactions{ .m_Inverted{bInv}, .m_Arguments{ pos1, pos2 } };
 		}
-		else if (Verses[iParsePos] == Keywords[4])
-			return CHiddenResources{ .m_Inverted{bInversed}, .m_Arguments{ (string)Verses[iParsePos + 1] } };
-		else if (Verses[iParsePos] == Keywords[5])
-			return CRegionReligion{ .m_Inverted{bInversed}, .m_Arguments{ (string)Verses[iParsePos + 1], (string)Verses[iParsePos + 2] } };
-		else if (Verses[iParsePos] == Keywords[6])
-			return CResources{ .m_Inverted{bInversed}, .m_Arguments{ (string)Verses[iParsePos + 1] } };
+		else if (Verses[iPos] == Keywords[4])
+			return CHiddenResources{ .m_Inverted{bInv}, .m_Arguments{ (string)Verses[iPos + 1] } };
+		else if (Verses[iPos] == Keywords[5])
+			return CRegionReligion{ .m_Inverted{bInv}, .m_Arguments{ (string)Verses[iPos + 1], (string)Verses[iPos + 2] } };
+		else if (Verses[iPos] == Keywords[6])
+			return CResources{ .m_Inverted{bInv}, .m_Arguments{ (string)Verses[iPos + 1] } };
 		else [[unlikely]]
 			std::terminate();
 
