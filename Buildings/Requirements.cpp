@@ -12,6 +12,9 @@ using std::array;
 inline constexpr char RequirementTestString[] =
 R"(requires factions { england, france, spain, } and building_present barracks or building_present_min_level core_building stone_wall and event_counter found_america 1 and hidden_resource america and resource iron_mine or not region_religion pagan 50)";
 
+inline constexpr char RequirementSimpleString[] =
+R"(requires factions { all, })";
+
 template <typename... Tys>
 struct LambdaSet : Tys...
 {
@@ -73,7 +76,7 @@ namespace Requirements
 			auto pos2 = std::ranges::find(Verses, "}");
 
 			[[unlikely]]
-			if (auto const endpos = Verses.end(); pos1 == endpos || pos2 == endpos || (pos2 - pos1) <= 1)
+			if (auto const endpos = Verses.end(); pos1 == endpos || pos2 == endpos || (pos2 - pos1) < 1)
 				std::terminate();
 
 			return CFactions{ .m_Inverted{bInv}, .m_Arguments{ pos1, pos2 } };
@@ -158,12 +161,21 @@ namespace Requirements
 
 	void UnitTest(void) noexcept
 	{
-		auto const ret = Compile(RequirementTestString);
-		auto const dec = Decompile(ret);
+		auto ret = Compile(RequirementTestString);
+		auto dec = Decompile(ret);
 
 		fmt::print("Decompiled:\n{}\n", dec);
 		fmt::print("Original:\n{}\n", RequirementTestString);
 		fmt::print("\ncmp: {}\n", dec == RequirementTestString);
+
+		fmt::print("\n=====================================================================\n");
+
+		ret = Compile(RequirementSimpleString);
+		dec = Decompile(ret);
+
+		fmt::print("Decompiled:\n{}\n", dec);
+		fmt::print("Original:\n{}\n", RequirementSimpleString);
+		fmt::print("\ncmp: {}\n", dec == RequirementSimpleString);
 	}
 }
 
