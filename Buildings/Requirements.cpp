@@ -8,6 +8,8 @@
 using namespace std::literals;
 
 using std::array;
+using std::experimental::generator;
+using std::string_view;
 
 inline constexpr char RequirementTestString[] =
 R"(requires factions { england, france, spain, } and building_present barracks or building_present_min_level core_building stone_wall and event_counter found_america 1 and hidden_resource america and resource iron_mine or not region_religion pagan 50)";
@@ -21,23 +23,21 @@ struct LambdaSet : Tys...
 	using Tys::operator()...;
 };
 
-namespace Requirements
+static inline generator<string_view> Split(const string_view& s, const char* delimiters = ", \n\f\v\t\r") noexcept
 {
-	using std::experimental::generator;
-
-	generator<string_view> Split(const string_view& s, const char* delimiters = ", \n\f\v\t\r") noexcept
+	for (auto lastPos = s.find_first_not_of(delimiters, 0), pos = s.find_first_of(delimiters, lastPos);
+		s.npos != pos || s.npos != lastPos;
+		lastPos = s.find_first_not_of(delimiters, pos), pos = s.find_first_of(delimiters, lastPos)
+		)
 	{
-		for (auto lastPos = s.find_first_not_of(delimiters, 0), pos = s.find_first_of(delimiters, lastPos);
-			s.npos != pos || s.npos != lastPos;
-			lastPos = s.find_first_not_of(delimiters, pos), pos = s.find_first_of(delimiters, lastPos)
-			)
-		{
-			co_yield s.substr(lastPos, pos - lastPos);
-		}
-
-		co_return;
+		co_yield s.substr(lastPos, pos - lastPos);
 	}
 
+	co_return;
+}
+
+namespace Requirements
+{
 	inline constexpr LambdaSet Serialize
 	{
 		[](CFactions const& RequirementObject) noexcept -> string

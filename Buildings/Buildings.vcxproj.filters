@@ -6,10 +6,16 @@
     <ClCompile Include="..\Modules\battle_models.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\export_descr_unit.cpp">
+      <Filter>Modules</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Requirements.hpp" />
     <ClInclude Include="..\Modules\battle_models.hpp">
+      <Filter>Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\export_descr_unit.hpp">
       <Filter>Modules</Filter>
     </ClInclude>
   </ItemGroup>

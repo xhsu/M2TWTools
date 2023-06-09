@@ -77,11 +77,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Modules\battle_models.cpp" />
+    <ClCompile Include="..\Modules\export_descr_unit.cpp" />
     <ClCompile Include="Buildings.cpp" />
     <ClCompile Include="Requirements.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Modules\battle_models.hpp" />
+    <ClInclude Include="..\Modules\export_descr_unit.hpp" />
     <ClInclude Include="Requirements.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
