@@ -10,6 +10,8 @@
 
 #include <fmt/color.h>
 
+namespace fs = std::filesystem;
+
 using namespace BattleModels;
 
 using std::string;
@@ -488,4 +490,85 @@ inline void BattleModels::CFile::Parse(void) noexcept
 
 	if constexpr (bSpecial)
 		Skip(2);
+}
+
+set<fs::path> BattleModels::CTexture::ListOfFiles(fs::path const& DataPath) const noexcept
+{
+	set<fs::path> ret{};
+
+	if (auto TexPath = DataPath / m_szTex; fs::exists(TexPath))
+		ret.emplace(std::move(TexPath));
+	if (auto NormPath = DataPath / m_szNorm; fs::exists(NormPath))
+		ret.emplace(std::move(NormPath));
+	if (auto SpritePath = DataPath / m_szSprite; fs::exists(SpritePath) && !fs::is_directory(SpritePath))
+	{
+		//ret.insert_range(
+		//	fs::recursive_directory_iterator(SpritePath.parent_path())
+		//	| std::views::transform([](auto&& Entry) noexcept -> fs::path { return Entry; })
+		//	| std::views::filter([&](fs::path const& Path) noexcept { return Path.has_stem() && Path.stem().native().starts_with(SpritePath.stem().native()); })
+		//);
+
+		auto const szStem = SpritePath.parent_path().native() + L"\\" + SpritePath.stem().native();
+		for (int i = 0; i < 10; ++i)
+			if (fs::path Dependency{ szStem + L"_00" + std::to_wstring(i) + L".texture" }; fs::exists(Dependency))
+				ret.emplace(std::move(Dependency));
+
+		ret.emplace(std::move(SpritePath));
+	}
+
+	return ret;
+}
+
+set<string_view> BattleModels::CBattleModel::ListOfFiles() const noexcept
+{
+	set<string_view> ret{};
+
+	for (auto&& Meshes : m_rgrgMeshGroup)
+		ret.insert_range(Meshes | std::views::transform([](CMesh const& Mesh) noexcept -> string_view { return Mesh.m_szPath; }));
+
+	for (auto&& [tex, norm, spr] : m_UnitTex | std::views::values)
+	{
+		ret.emplace(tex);
+		ret.emplace(norm);
+		ret.emplace(spr);
+	}
+
+	for (auto&& [tex, norm, spr] : m_AttachmentTex | std::views::values)
+	{
+		ret.emplace(tex);
+		ret.emplace(norm);
+		ret.emplace(spr);
+	}
+
+	ret.erase("");
+
+	return ret;
+}
+
+set<fs::path> BattleModels::CBattleModel::ListOfFiles(fs::path const& DataPath) const noexcept
+{
+	set<fs::path> ret{};
+
+	for (auto&& Meshes : m_rgrgMeshGroup)
+		ret.insert_range(Meshes | std::views::transform([&](CMesh const& Mesh) noexcept { return DataPath / Mesh.m_szPath; }));
+
+	for (auto&& files : m_UnitTex
+		| std::views::values
+		| std::views::transform([&](CTexture const& tex) noexcept { return tex.ListOfFiles(DataPath); })
+		)
+	{
+		ret.insert_range(std::forward<set<fs::path>>(files));
+	}
+
+	// copy above.
+
+	for (auto&& files : m_AttachmentTex
+		| std::views::values
+		| std::views::transform([&](CTexture const& tex) noexcept { return tex.ListOfFiles(DataPath); })
+		)
+	{
+		ret.insert_range(std::forward<set<fs::path>>(files));
+	}
+
+	return ret;
 }

@@ -6,15 +6,19 @@
 #pragma once
 
 #include <array>
+#include <filesystem>
+#include <set>
 #include <string>
 #include <vector>
 
 namespace BattleModels
 {
 	using std::array;
-	using std::string;
-	using std::vector;
 	using std::pair;
+	using std::set;
+	using std::string;
+	using std::string_view;
+	using std::vector;
 
 	struct CMesh final
 	{
@@ -27,6 +31,8 @@ namespace BattleModels
 		string m_szTex{};
 		string m_szNorm{};
 		string m_szSprite{};
+
+		set<std::filesystem::path> ListOfFiles(std::filesystem::path const& DataPath) const noexcept;
 	};
 
 	struct CMount final
@@ -55,6 +61,9 @@ namespace BattleModels
 		int32_t m_iMysteryNum{};
 		array<float, 3> m_MysteryVector1{};
 		array<float, 3> m_MysteryVector2{};
+
+		set<string_view> ListOfFiles() const noexcept;
+		set<std::filesystem::path> ListOfFiles(std::filesystem::path const& DataPath) const noexcept;
 	};
 
 	struct CFile final
@@ -93,7 +102,7 @@ namespace BattleModels
 		~CFile(void) noexcept { Reset(); }
 
 		void Initialize(void) noexcept;
-		template<bool bSpecial = false> void Parse(void) noexcept;	// NOTE this can pass link phase is it NEVER got called outside of its impl cpp.
+		template <bool bSpecial = false> void Parse(void) noexcept;	// NOTE this can pass link phase is it NEVER got called outside of its impl cpp.
 		bool Sanity(void) const noexcept;
 		void Save(const char* pszFilePath = "battle_models.modeldb") const noexcept;
 		size_t Count(void) const noexcept;

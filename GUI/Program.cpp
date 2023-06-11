@@ -37,11 +37,6 @@ Size=294,348
 Collapsed=0
 DockId=0x00000003,0
 
-[Window][Debug##Default]
-Pos=60,60
-Size=400,400
-Collapsed=0
-
 [Window][GUI Pages]
 Pos=0,24
 Size=984,696
