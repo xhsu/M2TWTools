@@ -53,6 +53,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+      <BuildStlModules>false</BuildStlModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -70,6 +71,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)glad\include\;$(SolutionDir)..\fmt\include\;$(SolutionDir)..\imgui\;$(SolutionDir)..\stb\;$(SolutionDir)..\freetype-windows-binaries\include\;$(SolutionDir)..\glfw\include\;$(SolutionDir)..\tinyxml2\</AdditionalIncludeDirectories>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+      <BuildStlModules>false</BuildStlModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

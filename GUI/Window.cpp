@@ -142,6 +142,8 @@ void AddSpriteDialog(bool bShow) noexcept
 			ImGui::InputInt("Y Offset", &ofs_y); if (ImGui::IsItemHovered()) ImGui::SetTooltip("Some coord used if this sprite were to used as mouse cursor???\nDefault: 0");
 		}
 
+		ImGui::BeginDisabled(szName.empty());	// Cannot create a new spr with no name!
+
 		ImGui::NewLine();
 		if (Helper_AlignedButton("Accept", ImVec2{ 96, 0 }))
 		{
@@ -168,6 +170,9 @@ void AddSpriteDialog(bool bShow) noexcept
 			ofs_x = 0;
 			ofs_y = 0;
 		}
+
+		ImGui::EndDisabled();
+
 		if (Helper_AlignedButton("Decline", ImVec2{ 96, 0 }))
 		{
 			ImGui::CloseCurrentPopup();
