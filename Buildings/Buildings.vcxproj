@@ -76,6 +76,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Gadget.cpp" />
     <ClCompile Include="..\Modules\battle_models.cpp" />
     <ClCompile Include="..\Modules\export_descr_unit.cpp" />
     <ClCompile Include="Buildings.cpp" />

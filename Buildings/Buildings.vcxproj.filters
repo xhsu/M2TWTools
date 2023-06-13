@@ -9,6 +9,7 @@
     <ClCompile Include="..\Modules\export_descr_unit.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
+    <ClCompile Include="..\Gadget.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Requirements.hpp" />
