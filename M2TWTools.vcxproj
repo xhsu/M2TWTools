@@ -10,6 +10,9 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Quick.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -38,31 +41,26 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="m2tw.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="m2tw.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)bin\$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
-    <TargetName>$(ProjectName)-$(Configuration)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)bin\$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
-    <TargetName>$(ProjectName)-$(Configuration)</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FMT_HEADER_ONLY;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)..\fmt\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -77,10 +75,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FMT_HEADER_ONLY;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)..\fmt\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -91,31 +88,6 @@
       </EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\Hydrogenium\UtlArithmetic.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlBuffer.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlColor.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlConcepts.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlFileSystem.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlFunction.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlKeyValues.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlLinearAlgebra.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlRandom.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlString.ixx" />
-    <ClCompile Include="..\Hydrogenium\UtlWinConsole.ixx" />
-    <ClCompile Include="Modules\descr_mercenaries.ixx" />
-    <ClCompile Include="Modules\descr_regions.ixx" />
-    <ClCompile Include="Modules\export_descr_unit.ixx" />
-    <ClCompile Include="Modules\battle_models.ixx" />
-    <ClCompile Include="Tool_UiXmlMender.cpp" />
-    <ClCompile Include="Modules\ui_xmls.ixx" />
-    <ClCompile Include="tinyxml2\tinyxml2.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\Hydrogenium\ScopedEnumOperator.hpp" />
-    <ClInclude Include="..\Hydrogenium\UtlFormatter.hpp" />
-    <ClInclude Include="tinyxml2\tinyxml2.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
