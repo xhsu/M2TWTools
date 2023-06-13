@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <tinyxml2.h>
 
+#include <array>
 #include <filesystem>
 #include <set>
 #include <vector>
@@ -82,7 +83,8 @@ struct GameInterfaceFile_t final
 
 	// Methods
 
-	std::set<Image_t> Images() const noexcept;
+	std::set<Image_t> Images(bool bUseCultureOverride) const noexcept;
+	std::set<std::wstring_view> ReferencedFileStems() const noexcept;
 
 	std::string Decompile(std::filesystem::path const& Path) noexcept;
 	void Import(std::filesystem::path const &Path) noexcept;
@@ -91,3 +93,41 @@ struct GameInterfaceFile_t final
 	inline void Clear() noexcept { m_Version = 6; m_EnumerationName.clear(); m_rgSprites.clear(); }
 	[[nodiscard]] inline bool Empty() noexcept { return m_EnumerationName.empty() || m_rgSprites.empty(); }
 };
+
+namespace UIFolder
+{
+	namespace fs = std::filesystem;
+
+	using namespace std::literals;
+
+	using std::array;
+
+	inline constexpr array m_rgszCultures
+	{
+		"eastern_european"sv,
+		"greek"sv,
+		"mesoamerican"sv,
+		"middle_eastern"sv,
+		"northern_european"sv,
+		"southern_european"sv,
+	};
+
+	enum ECulture
+	{
+		eastern_european,
+		greek,
+		mesoamerican,
+		middle_eastern,
+		northern_european,
+		southern_european,
+	};
+
+	inline constexpr auto CULTURE_COUNT = m_rgszCultures.size();
+
+	inline fs::path m_szUIFolder;
+	inline array<fs::path, CULTURE_COUNT> m_rgszOverrideFolders;
+	inline array<bool, CULTURE_COUNT> m_rgbOverrideExists;
+	inline int32_t m_iSelected = southern_european;
+
+	void Update(fs::path const& UIFolder) noexcept;
+}

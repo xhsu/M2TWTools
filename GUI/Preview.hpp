@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 
-inline constexpr auto PREVIEW_WIDTH = 512, PREVIEW_HEIGHT = 512;
+inline constexpr auto PREVIEW_WIDTH = 60 + 75 * 5 + 60, PREVIEW_HEIGHT = 60 + 85 * 5 + 60;
 
 namespace Preview
 {

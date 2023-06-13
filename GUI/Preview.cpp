@@ -18,9 +18,9 @@ using std::string_view;
 
 
 static GameInterfaceFile_t s_Battle, s_Shared, s_Strategy;
-static array<array<Sprite_t const*, 3>, 3> s_rgrgScroll = {};
+static array<array<Sprite_t const*, 3>, 3> s_rgrgScroll = {};	// #UPDATE_AT_CPP23 std::mdspan
 
-enum ERoll
+enum ERow
 {
 	TOP = 0,
 	MID,
@@ -128,13 +128,18 @@ void Preview::Draw() noexcept
 	{
 		int32_t x{}, y{};
 
-		for (auto&& rgpSpr : s_rgrgScroll)
+		static constexpr auto iHorizontalRepeat = 5;
+		static constexpr auto iVerticalRepeat = 5;
+
+		auto fnDrawRow = [&x,&y](ERow row) noexcept
 		{
+			auto&& rgpSpr = s_rgrgScroll[row];
+
 			DrawSprite(*rgpSpr[LEFT], x, y);
 
 			x += rgpSpr[LEFT]->m_Rect.Width();
 
-			for (int i = 0; i < 2; ++i)
+			for (int i = 0; i < iHorizontalRepeat; ++i)
 			{
 				DrawSprite(*rgpSpr[CENTER], x, y);
 				x += rgpSpr[CENTER]->m_Rect.Width();
@@ -143,7 +148,14 @@ void Preview::Draw() noexcept
 			DrawSprite(*rgpSpr[RIGHT], x, y);
 			x = 0;
 			y += rgpSpr[RIGHT]->m_Rect.Height();
-		}
+		};
+
+		fnDrawRow(ERow::TOP);
+
+		for (auto i = 0; i < iVerticalRepeat; ++i)
+			fnDrawRow(ERow::MID);
+
+		fnDrawRow(ERow::BOTTOM);
 	}
 	else
 	{

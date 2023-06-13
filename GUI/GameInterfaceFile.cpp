@@ -1,7 +1,5 @@
 #include "GameInterfaceFile.hpp"
 
-//#include <>
-
 #include <fmt/color.h>
 #include <stb_image.h>
 
@@ -22,15 +20,38 @@ using std::set;
 using std::string;
 using std::tuple;
 using std::vector;
+using std::wstring_view;
 
 template <typename T>
 inline T g_Dummy{};
 
-set<Image_t> GameInterfaceFile_t::Images() const noexcept
+set<Image_t> GameInterfaceFile_t::Images(bool bUseCultureOverride) const noexcept
 {
+	static constexpr auto fnGetImage = [](Sprite_t const& spr) noexcept -> Image_t { return spr.m_Image; };
+	static constexpr auto fnFindOverride = [](Sprite_t const& spr) noexcept -> Image_t
+	{
+		if (!UIFolder::m_rgbOverrideExists[UIFolder::m_iSelected])
+			return spr.m_Image;
+
+		if (auto const szOverridePath = UIFolder::m_rgszOverrideFolders[UIFolder::m_iSelected] / fs::_Parse_filename(spr.m_Image.m_Path.native());
+			fs::exists(szOverridePath))
+		{
+			return Image_t{ szOverridePath };
+		}
+
+		return spr.m_Image;
+	};
+
 	return
 		m_rgSprites
-		| std::views::transform([](Sprite_t const &spr) noexcept -> Image_t { return spr.m_Image; })
+		| std::views::transform(bUseCultureOverride ? fnFindOverride : fnGetImage)
+		| std::ranges::to<set>();
+}
+
+set<wstring_view> GameInterfaceFile_t::ReferencedFileStems() const noexcept
+{
+	return m_rgSprites
+		| std::views::transform([](Sprite_t const& spr) noexcept -> std::wstring_view { return fs::_Parse_stem(spr.m_Image.m_Path.native()); })
 		| std::ranges::to<set>();
 }
 
@@ -202,6 +223,7 @@ void GameInterfaceFile_t::Import(fs::path const& Path) noexcept
 			return;
 		}
 
+		// Default culture here. Might needs to change.
 		rgszPaths.emplace_back(szParentPath / L"southern_european" / L"interface" / p);
 
 		if (!fs::exists(rgszPaths.back()))
@@ -255,7 +277,7 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 	auto pName = pRoot->InsertNewChildElement("enumeration_name");
 	pName->SetText(m_EnumerationName.c_str());
 
-	auto const rgszImages = Images();
+	auto const rgszImages = Images(false);
 
 	auto pPages = pRoot->InsertNewChildElement("texture_pages");
 	pPages->SetAttribute("count", rgszImages.size());
@@ -295,4 +317,17 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 		pSpr->SetAttribute("alpha", (int)Sprite.m_IsAlpha);
 		pSpr->SetAttribute("cursor", (int)Sprite.m_IsCursor);	// M2TW requires 1 or 0, not 'true' or 'false'
 	}
+}
+
+void UIFolder::Update(fs::path const& UIFolder) noexcept
+{
+	m_szUIFolder = UIFolder;
+
+	for (auto&& [culture, folder, exists] : std::views::zip(m_rgszCultures, m_rgszOverrideFolders, m_rgbOverrideExists))
+	{
+		folder = m_szUIFolder / culture / L"interface";
+		exists = fs::exists(folder) && !fs::is_empty(folder);
+	}
+
+	m_iSelected = southern_european;	// reset to default - maybe we should use file search?
 }

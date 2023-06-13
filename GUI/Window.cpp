@@ -22,6 +22,8 @@
 
 import UtlString;
 
+using namespace std::literals;
+
 using std::array;
 using std::set;
 using std::string;
@@ -243,11 +245,12 @@ void DockingSpaceDisplay() noexcept
 				if (auto pPath = Win32_OpenFileDialog(L"Select M2TW UI XML", L"*.xml", L"Extensible Markup Language (*.xml)"); pPath)
 				{
 					g_CurrentPath = *pPath;
+					UIFolder::Update(g_CurrentPath.parent_path());
 
 					fmt::print("File selected: {}\n", pPath->u8string());
 					g_CurrentXml.Import(*pPath);
 
-					g_rgImages = g_CurrentXml.Images();
+					g_rgImages = g_CurrentXml.Images(false);
 
 					g_pActivatedImage = nullptr;
 					Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
@@ -320,8 +323,9 @@ and the "last modified" attribute of .xml is NEWER than its .sd counterpart.)"
 					system("cls");
 					fmt::print("File decompiled: {}\n", pPath->u8string());
 					g_CurrentPath = g_CurrentXml.Decompile(*pPath);
+					UIFolder::Update(g_CurrentPath.parent_path());
 
-					g_rgImages = g_CurrentXml.Images();
+					g_rgImages = g_CurrentXml.Images(false);
 
 					g_pActivatedImage = nullptr;
 					Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
@@ -439,7 +443,7 @@ void ImageWindowDisplay() noexcept
 		Canvas::m_SelectedSprites.append_range(
 			g_CurrentXml.m_rgSprites
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
-			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && wcsieql(fs::_Parse_stem(spr.m_Image.m_Path.native()), fs::_Parse_stem(g_pActivatedImage->m_Path.native())); })	// MS STL internal function involved. Whatch out!
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return !std::ranges::contains(Canvas::m_SelectedSprites, &spr); })
 			| std::views::transform([](Sprite_t &spr) noexcept -> Sprite_t *{ return &spr; })
 		);
@@ -449,7 +453,7 @@ void ImageWindowDisplay() noexcept
 
 	Canvas::m_Gizmos =
 		g_CurrentXml.m_rgSprites
-		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
+		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && wcsieql(fs::_Parse_stem(spr.m_Image.m_Path.native()), fs::_Parse_stem(g_pActivatedImage->m_Path.native())); })
 		| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return !std::ranges::contains(Canvas::m_SelectedSprites, &spr); })
 		| std::views::transform([](Sprite_t const &spr) noexcept { return spr.m_Rect; })
 		| std::ranges::to<vector>();
@@ -463,7 +467,7 @@ void OperationWindowDisplay() noexcept
 	ImGui::Begin("Actions");
 
 	{
-		ImGui::SeparatorText("Hovering Items");
+		ImGui::SeparatorText("Hovering");
 
 		bool bAny{ false };
 
@@ -481,7 +485,7 @@ void OperationWindowDisplay() noexcept
 		if (!bAny)
 			ImGui::BulletText("[NONE]");
 
-		ImGui::SeparatorText("Selected Items");
+		ImGui::SeparatorText("Selected");
 
 		for (auto &&pSpr : Canvas::m_SelectedSprites)
 		{
@@ -504,6 +508,50 @@ void OperationWindowDisplay() noexcept
 		ImGui::SliderFloat("X", &g_vecImgOrigin.x, 0.f, flScale, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat("Y", &g_vecImgOrigin.y, 0.f, flScale, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		Helper_HelpMarker("You may also drag the image by click and hold the mouse wheel when hovering on the image.");
+
+		ImGui::SeparatorText("Culture");
+
+		// #UPDATE_AT_CPP23 views::enumerate
+		for (auto i = 0; i < (int32_t)UIFolder::CULTURE_COUNT; ++i)
+		{
+			ImGui::BeginDisabled(!UIFolder::m_rgbOverrideExists[i]);
+
+			if (ImGui::RadioButton(UIFolder::m_rgszCultures[i].data(), &UIFolder::m_iSelected, i))
+				g_rgImages = g_CurrentXml.Images(true);
+
+			if (!UIFolder::m_rgbOverrideExists[i] && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("Culture override folder 'UI/%s/interface/' no found!", UIFolder::m_rgszCultures[i].data());
+			else if (UIFolder::m_rgbOverrideExists[i] && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && ImGui::BeginTooltip())
+			{
+				ImGui::TextUnformatted("Overriding:");
+
+				auto const Stems = g_CurrentXml.ReferencedFileStems();
+
+				// C++ is not even implimenting the ranges::contains() method with _Proj parameter!
+				static constexpr auto fnContains = [](auto&& Rg, auto&& sz) noexcept -> bool
+				{
+					for (auto&& Elem : Rg)
+						if (wcsieql(Elem, sz))
+							return true;
+
+					return false;
+				};
+
+				std::ranges::for_each(
+					fs::directory_iterator(UIFolder::m_rgszOverrideFolders[i])
+					| std::views::transform([](fs::directory_entry const& Entry) noexcept -> fs::path { return Entry; })
+					| std::views::filter([&](fs::path const& Path) noexcept { return fnContains(Stems, fs::_Parse_stem(Path.native())); })
+					| std::views::transform([](fs::path const& Path) noexcept -> string {  return fs::relative(Path, UIFolder::m_szUIFolder).u8string(); }),
+
+					ImGui::BulletText,
+					[](string const& sz) noexcept { return sz.c_str(); }	// One may not directly ask .c_str() from path.u8string(), as the lifetime of string object will not be preserved by 'return' statement.
+				);
+
+				ImGui::EndTooltip();
+			}
+
+			ImGui::EndDisabled();
+		}
 	}
 
 	ImGui::End();
@@ -640,6 +688,7 @@ void SearchSpriteWindowDisplay() noexcept
 	static vector<string_view> rgszSearchCell{};
 	rgszSearchCell = UTIL_Split(szSearch, " \t\f\v\n\r") | std::ranges::to<vector>();
 
+	// #UPDATE_AT_CPP23 views::enumerate
 	static constexpr array rgfnFilters
 	{
 		tuple{ 0, "NONE", +[](Sprite_t const& spr) constexpr noexcept -> bool { return true; }, },	// everything

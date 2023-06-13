@@ -18,8 +18,8 @@ inline float g_flScope = 1;	// Scoping image
 
 namespace Window
 {
-	inline bool SpritesList{ false };
-	inline bool Preview{ true };
+	inline bool SpritesList{ true };
+	inline bool Preview{ false };
 }
 
 namespace Config
