@@ -6,21 +6,14 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include <array>
-#include <filesystem>
 #include <ranges>
-#include <set>
-#include <string_view>
-#include <tuple>
-#include <vector>
 
 #include "Canvas.hpp"
 #include "GameInterfaceFile.hpp"
 #include "Image.hpp"
 #include "OpenFile.hpp"
+#include "String.hpp"
 #include "Window.hpp"
-
-import UtlString;
 
 using namespace std::literals;
 
@@ -412,7 +405,7 @@ void ImageWindowDisplay() noexcept
 		{
 			if (g_CurrentPath.empty())
 			{
-				fmt::print(fg(fmt::color::light_golden_rod_yellow), "You may only be able to edit existing UI file, not creating one from scratch.");
+				fmt::print(fg(fmt::color::light_golden_rod_yellow), "You may only be able to edit existing UI file, not creating one from scratch.\n");
 			}
 			else if (auto pPath = Win32_OpenFileDialog(L"Add a new UI page", L"*.tga", L"TARGA (*.tga)"); pPath)
 			{

@@ -18,7 +18,10 @@ using std::string_view;
 
 
 static GameInterfaceFile_t s_Battle, s_Shared, s_Strategy;
-static array<array<Sprite_t const*, 3>, 3> s_rgrgScroll = {};	// #UPDATE_AT_CPP23 std::mdspan
+static array<array<Sprite_t const*, 3>, 3> s_rgrgpScroll = {};	// #UPDATE_AT_CPP23 std::mdspan
+static array<Sprite_t const*, 3> s_rgpStratHud = {};
+static Sprite_t const* s_pMissionButton = nullptr;
+static array<Sprite_t const*, 3> s_rgpStratTabs = {};
 
 enum ERow
 {
@@ -41,6 +44,9 @@ inline void DrawSprite(const Sprite_t& spr, int32_t x, int32_t y) noexcept
 
 	glBindTexture(GL_TEXTURE_2D, spr.m_Image.m_iTexture);
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glBegin(GL_QUADS);
 	glTexCoord2f(uv0.x, uv0.y);
 	glVertex2i(x, y);
@@ -51,6 +57,20 @@ inline void DrawSprite(const Sprite_t& spr, int32_t x, int32_t y) noexcept
 	glTexCoord2f(uv0.x, uv1.y);
 	glVertex2i(x, y + iHeight);
 	glEnd();
+}
+
+inline void FindSprite(GameInterfaceFile_t const& file, string_view const& sz, Sprite_t const** ppSpr) noexcept
+{
+	if (auto const it = std::ranges::find_if(file.m_rgSprites, [&](Sprite_t const& spr) noexcept { return spr.m_Name == sz; });
+		it != file.m_rgSprites.end())
+	{
+		*ppSpr = &(*it);
+	}
+	else
+	{
+		*ppSpr = nullptr;
+		fmt::print(fg(fmt::color::light_golden_rod_yellow), "[{}] Sprite no found: '{}'\n", file.m_EnumerationName, sz);
+	}
 }
 
 void Preview::Initilize() noexcept
@@ -74,26 +94,43 @@ void Preview::Initilize() noexcept
 
 void Preview::Gather() noexcept
 {
-	static constexpr array rgrgszNames
+	static constexpr array rgrgszScrollNames
 	{
 		array{ "SCROLL_TOP_LEFT"sv, "SCROLL_TOP_CENTER"sv, "SCROLL_TOP_RIGHT"sv, },
 		array{ "SCROLL_MID_LEFT"sv, "SCROLL_MID"sv, "SCROLL_MID_RIGHT"sv, },
 		array{ "SCROLL_BOTTOM_LEFT"sv, "SCROLL_BOTTOM_CENTER"sv, "SCROLL_BOTTOM_RIGHT"sv, },
 	};
 
-	for (auto&& [rgsz, rgpspr] : std::views::zip(rgrgszNames, s_rgrgScroll))
-	{
+	for (auto&& [rgsz, rgpspr] : std::views::zip(rgrgszScrollNames, s_rgrgpScroll))
 		for (auto&& [sz, pSpr] : std::views::zip(rgsz, rgpspr))
-		{
-			if (auto const it = std::ranges::find_if(s_Shared.m_rgSprites, [&](Sprite_t const& spr) noexcept { return spr.m_Name == sz; }); it != s_Shared.m_rgSprites.end())
-				pSpr = &(*it);
-			else
-			{
-				pSpr = nullptr;
-				fmt::print(fg(fmt::color::light_golden_rod_yellow), "Sprite no found: '{}'\n", sz);
-			}
-		}
-	}
+			FindSprite(s_Shared, sz, &pSpr);
+
+	static constexpr array rgszStratHudNames
+	{
+		"STRAT_HUD_LEFT"sv,
+		"STRAT_HUD_MIDDLE"sv,
+		"STRAT_HUD_RIGHT"sv,
+	};
+
+	for (auto&& [sz, pSpr] : std::views::zip(rgszStratHudNames, s_rgpStratHud))
+		FindSprite(s_Strategy, sz, &pSpr);
+
+	FindSprite(s_Strategy, "MISSION_BUTTON"sv, &s_pMissionButton);
+
+	static constexpr array rgszStratTabButtons
+	{
+		// w: 114, h: 61
+		"HUD_TAB_LEFT"sv,
+
+		// w: 115, h: 57
+		"HUD_TAB_MID"sv,
+
+		// w: 114, h: 57
+		"HUD_TAB_RIGHT"sv,
+	};
+
+	for (auto&& [sz, pSpr] : std::views::zip(rgszStratTabButtons, s_rgpStratTabs))
+		FindSprite(s_Strategy, sz, &pSpr);
 }
 
 void Preview::Draw() noexcept
@@ -133,7 +170,7 @@ void Preview::Draw() noexcept
 
 		auto fnDrawRow = [&x,&y](ERow row) noexcept
 		{
-			auto&& rgpSpr = s_rgrgScroll[row];
+			auto&& rgpSpr = s_rgrgpScroll[row];
 
 			DrawSprite(*rgpSpr[LEFT], x, y);
 
@@ -156,6 +193,45 @@ void Preview::Draw() noexcept
 			fnDrawRow(ERow::MID);
 
 		fnDrawRow(ERow::BOTTOM);
+
+		x = 0;	// reset x coord for drawing at left.
+
+		const auto y_scroll_end = y;
+
+		DrawSprite(*s_rgpStratHud[LEFT], x, y);
+		x += s_rgpStratHud[LEFT]->m_Rect.Width();
+
+		DrawSprite(*s_rgpStratHud[CENTER], x, y + (s_rgpStratHud[LEFT]->m_Rect.Height() - s_rgpStratHud[CENTER]->m_Rect.Height()));
+		x += s_rgpStratHud[CENTER]->m_Rect.Width();
+
+		DrawSprite(*s_rgpStratHud[RIGHT], x, y);
+		x += s_rgpStratHud[RIGHT]->m_Rect.Width();
+
+		static constexpr auto TAB_FRAME_TALL = 46;
+
+		x = s_rgpStratHud[LEFT]->m_Rect.Width();
+		y = y_scroll_end;
+
+		DrawSprite(*s_rgpStratTabs[LEFT], x, y);
+
+		x += s_rgpStratTabs[LEFT]->m_Rect.Width();
+
+		for (auto i = 0; i < 2; ++i)
+		{
+			DrawSprite(*s_rgpStratTabs[MID], x, y);
+			x += s_rgpStratTabs[MID]->m_Rect.Width();
+		}
+
+		DrawSprite(*s_rgpStratTabs[RIGHT], x, y);
+
+		static constexpr auto MAP_FRAME_TALL = 42;
+		static constexpr auto MAP_FRAME_THICK = 22;
+		static constexpr auto X_OFX_CONST = 4;
+
+		x = s_rgpStratHud[LEFT]->m_Rect.Width() - s_pMissionButton->m_Rect.Width() + (s_pMissionButton->m_Rect.Width() - MAP_FRAME_THICK) / 2 - X_OFX_CONST;
+		y = y_scroll_end;
+
+		DrawSprite(*s_pMissionButton, x, y);
 	}
 	else
 	{
@@ -263,5 +339,5 @@ void Preview::GUI() noexcept
 
 bool Preview::Ready() noexcept
 {
-	return !s_Battle.Empty() && !s_Strategy.Empty() && !s_Strategy.Empty();
+	return !s_Battle.Empty() && !s_Strategy.Empty() && !s_Shared.Empty();
 }

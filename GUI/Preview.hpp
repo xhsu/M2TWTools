@@ -2,7 +2,8 @@
 
 #include <glad/glad.h>
 
-inline constexpr auto PREVIEW_WIDTH = 60 + 75 * 5 + 60, PREVIEW_HEIGHT = 60 + 85 * 5 + 60;
+// Width: whichever is larger.
+inline constexpr auto PREVIEW_WIDTH = /*(60 + 75 * 5 + 60) + */(280 * 2 + 461), PREVIEW_HEIGHT = (60 + 85 * 5 + 60) + (180);
 
 namespace Preview
 {

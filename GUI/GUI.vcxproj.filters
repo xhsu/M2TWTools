@@ -48,13 +48,8 @@
     <ClCompile Include="..\tinyfiledialogs\tinyfiledialogs.c">
       <Filter>tinyfiledialogs</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Hydrogenium\UtlConcepts.ixx">
-      <Filter>Hydrogenium</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Hydrogenium\UtlString.ixx">
-      <Filter>Hydrogenium</Filter>
-    </ClCompile>
     <ClCompile Include="Preview.cpp" />
+    <ClCompile Include="..\String.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ImGui">
@@ -86,9 +81,6 @@
     </Filter>
     <Filter Include="tinyfiledialogs">
       <UniqueIdentifier>{ad684387-dfd5-46d9-a73b-0ed1634fe3a7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Hydrogenium">
-      <UniqueIdentifier>{33dbb7fe-d3cd-4da5-ab32-e9fbb99ad18d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -143,6 +135,7 @@
     </ClInclude>
     <ClInclude Include="Preview.hpp" />
     <ClInclude Include="Window.hpp" />
+    <ClInclude Include="..\String.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\imgui\misc\debuggers\imgui.natvis">
