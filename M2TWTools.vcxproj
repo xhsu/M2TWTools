@@ -11,7 +11,21 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Gadget.cpp" />
+    <ClCompile Include="Modules\battle_models.cpp" />
+    <ClCompile Include="Modules\export_descr_unit.cpp" />
     <ClCompile Include="Quick.cpp" />
+    <ClCompile Include="Modules\export_descr_sounds_units_voice.cpp" />
+    <ClCompile Include="String.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Modules\battle_models.hpp" />
+    <ClInclude Include="Modules\export_descr_unit.hpp" />
+    <ClInclude Include="Modules\export_descr_sounds_units_voice.hpp" />
+    <ClInclude Include="String.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="String.natvis" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

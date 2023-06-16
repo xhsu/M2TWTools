@@ -43,10 +43,13 @@ struct Sprite_t final
 	int32_t m_OfsX{}, m_OfsY{};
 	bool m_IsAlpha{ true }, m_IsCursor{ false };
 
+	static inline constexpr auto ENGINE_BIAS_X = 0;	// could be 1?
+	static inline constexpr auto ENGINE_BIAS_Y = 0;
+
 	inline constexpr std::pair<ImVec2, ImVec2> UV() const noexcept
 	{
-		auto const flWidth = static_cast<float>(m_Image.m_iWidth);
-		auto const flHeight = static_cast<float>(m_Image.m_iHeight);
+		auto const flWidth = static_cast<float>(m_Image.m_iWidth + ENGINE_BIAS_X);
+		auto const flHeight = static_cast<float>(m_Image.m_iHeight + ENGINE_BIAS_Y);
 
 		return std::pair
 		{
@@ -54,7 +57,7 @@ struct Sprite_t final
 			ImVec2{ (float)m_Rect.m_right / flWidth, (float)m_Rect.m_bottom / flHeight },
 		};
 	}
-	inline constexpr std::pair<int32_t, int32_t> WH() const noexcept { return std::pair{ m_Rect.Width(), m_Rect.Height() }; }
+	inline constexpr std::pair<int32_t, int32_t> WH() const noexcept { return std::pair{ m_Rect.Width() + ENGINE_BIAS_X, m_Rect.Height() + ENGINE_BIAS_Y }; }
 
 	// Only name make difference. Just like in game.
 	inline constexpr auto operator<=> (Sprite_t const &rhs) const noexcept { return m_Name <=> rhs.m_Name; }

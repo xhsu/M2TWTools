@@ -195,7 +195,7 @@ void AboutDialog(bool bShow) noexcept
 
 	if (ImGui::BeginPopupModal("About...", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::TextUnformatted("Version 1.1");
+		ImGui::TextUnformatted("Version 1.2");
 		ImGui::TextUnformatted("By: Hydrogenium, @" __DATE__);
 		ImGui::TextUnformatted("Website: https://github.com/xhsu/M2TWTools/releases");
 

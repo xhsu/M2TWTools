@@ -20,8 +20,13 @@ using std::string_view;
 static GameInterfaceFile_t s_Battle, s_Shared, s_Strategy;
 static array<array<Sprite_t const*, 3>, 3> s_rgrgpScroll = {};	// #UPDATE_AT_CPP23 std::mdspan
 static array<Sprite_t const*, 3> s_rgpStratHud = {};
-static Sprite_t const* s_pMissionButton = nullptr;
+static Sprite_t const* s_pMissionButton = nullptr;	// MISSION_BUTTON
 static array<Sprite_t const*, 3> s_rgpStratTabs = {};
+static Sprite_t const* s_pEndTurnButton = nullptr;	// END_TURN_BUTTON_IMAGE
+static Sprite_t const* s_pPolandFactionButton = nullptr;	// FACTION_LOGO_POLAND
+
+inline constexpr auto STRAT_HUD_MID_WIDTH = 461;
+inline constexpr auto STRAT_HUD_TAB_SIDE_WIDTH = 0;
 
 enum ERow
 {
@@ -131,6 +136,9 @@ void Preview::Gather() noexcept
 
 	for (auto&& [sz, pSpr] : std::views::zip(rgszStratTabButtons, s_rgpStratTabs))
 		FindSprite(s_Strategy, sz, &pSpr);
+
+	FindSprite(s_Strategy, "END_TURN_BUTTON_IMAGE"sv, &s_pEndTurnButton);
+	FindSprite(s_Strategy, "FACTION_LOGO_POLAND"sv, &s_pPolandFactionButton);
 }
 
 void Preview::Draw() noexcept
@@ -224,11 +232,20 @@ void Preview::Draw() noexcept
 
 		DrawSprite(*s_rgpStratTabs[RIGHT], x, y);
 
+		// Faction button. Poland as example.
+
+		static constexpr auto FACTION_X_OFX = 8;
+
+		x += s_rgpStratTabs[RIGHT]->m_Rect.Width() - FACTION_X_OFX;
+		DrawSprite(*s_pPolandFactionButton, x, y);
+
+		// Mission button.
+
 		static constexpr auto MAP_FRAME_TALL = 42;
 		static constexpr auto MAP_FRAME_THICK = 22;
-		static constexpr auto X_OFX_CONST = 4;
+		static constexpr auto MISSION_X_OFX = 4;
 
-		x = s_rgpStratHud[LEFT]->m_Rect.Width() - s_pMissionButton->m_Rect.Width() + (s_pMissionButton->m_Rect.Width() - MAP_FRAME_THICK) / 2 - X_OFX_CONST;
+		x = s_rgpStratHud[LEFT]->m_Rect.Width() - s_pMissionButton->m_Rect.Width() + (s_pMissionButton->m_Rect.Width() - MAP_FRAME_THICK) / 2 - MISSION_X_OFX;
 		y = y_scroll_end;
 
 		DrawSprite(*s_pMissionButton, x, y);
@@ -302,9 +319,9 @@ void Preview::GUI() noexcept
 				{
 					system("cls");
 
-					auto const FBattle = *p / "battle.sd.xml";
-					auto const FShared = *p / "shared.sd.xml";
-					auto const FStrategy = *p / "strategy.sd.xml";
+					auto const FBattle = *p / L"battle.sd.xml";
+					auto const FShared = *p / L"shared.sd.xml";
+					auto const FStrategy = *p / L"strategy.sd.xml";
 
 					if (fs::exists(FBattle) && fs::exists(FShared) && fs::exists(FStrategy))
 					{

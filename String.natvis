@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="CBaseParser">
+		<DisplayString>{{m_cur={m_cur,g}}}</DisplayString>
+		<Expand>
+			<Item Name="[Eof]">(m_cur - m_p) >= m_length</Item>
+			<Item Name="[Tell]">m_cur - m_p</Item>
+			<Item Name="[Now]">*m_cur</Item>
+			<Item Name="m_length">m_length</Item>
+		</Expand>
+	</Type>
+</AutoVisualizer>

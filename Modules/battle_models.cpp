@@ -88,6 +88,9 @@ static inline string Serialize(CStance const& Stance) noexcept
 
 static inline string Serialize(CBattleModel const& Model) noexcept
 {
+	if (Model.m_szName == "")
+		return "";
+
 	string ret{};
 
 	// Region 1: name
@@ -135,155 +138,142 @@ static inline string Serialize(CBattleModel const& Model) noexcept
 	return ret;
 }
 
-void BattleModels::CFile::Reset(void) noexcept
+template <bool bSpecial>
+inline void BattleModels::CFile::ParseBlock(void) noexcept
 {
-	m_iSize = 0;
-
-	if (m_pszBuffer)
-		free(m_pszBuffer);
-
-	m_pszBuffer = nullptr;
-
-	m_pszCurPos = nullptr;
-	m_pBufEnd = nullptr;
-}
-
-void BattleModels::CFile::Set(const char* pszFilePath) noexcept
-{
-	Reset();
-
-	FILE* f = fopen(pszFilePath, "rb");
-	if (!f)
+	if (Eof())
 		return;
 
-	fseek(f, 0, SEEK_END);
-	m_iSize = ftell(f);
+	// Mark for special if this version had been called.
+	if constexpr (bSpecial)
+		m_bSpecialFirst = true;
 
-	m_pszBuffer = (char*)calloc(m_iSize + 1, sizeof(char));
-	fseek(f, 0, SEEK_SET);
-	fread(m_pszBuffer, sizeof(char), m_iSize, f);
+	// Pre-allocate
+	auto const szName = ParseString();
+	CBattleModel& BattleModel = m_rgBattleModels[szName];
 
-	fclose(f);
+	// Region 1: name
+	BattleModel.m_szName = szName;
 
-	m_pszCurPos = m_pszBuffer;
-	m_pBufEnd = m_pszBuffer + m_iSize;	// Landed at the last '\0'
-}
-
-inline void BattleModels::CFile::Skip(int iCount) noexcept
-{
-	for (; m_pszCurPos != m_pBufEnd && iCount; ++m_pszCurPos)
+	// Region 2: mesh
+	if constexpr (!bSpecial)
 	{
-		if (*m_pszCurPos == ' ')
-			--iCount;
+		BattleModel.m_rgrgMeshGroup.resize(ParseNumber());
+
+		for (auto& rgMeshGroup : BattleModel.m_rgrgMeshGroup)
+		{
+			rgMeshGroup.resize(ParseNumber());
+
+			for (auto& Mesh : rgMeshGroup)
+			{
+				Mesh.m_szPath = ParseString();
+				Mesh.m_iDistance = ParseNumber();
+			}
+		}
+	}
+	else
+	{
+		BattleModel.m_rgrgMeshGroup.resize(1);	// For the "mount_pony", always be one.
+		Skip(3);
+
+		auto& rgMeshGroup = BattleModel.m_rgrgMeshGroup.front();
+		rgMeshGroup.resize(ParseNumber());
+		Skip(2);
+
+		for (auto& Mesh : rgMeshGroup)
+		{
+			Mesh.m_szPath = ParseString();
+			Mesh.m_iDistance = ParseNumber();
+		}
 	}
 
-	SkipUntilNonspace();
-}
+	// Region 3: unit texture
+	if constexpr (bSpecial)	// It's like "0 0 28 0 0 " for "mount_pony"
+		Skip(2);
 
-inline void BattleModels::CFile::SkipUntilNonspace(void) noexcept
-{
-	while (!Eof() && std::isspace(*m_pszCurPos))
+	auto iMaxSize = ParseNumber();
+	BattleModel.m_UnitTex.reserve(iMaxSize);
+
+	if constexpr (bSpecial)
+		Skip(2);
+
+	for (auto i = 0; i < iMaxSize; ++i)
 	{
-		++m_pszCurPos;
-	}
-}
+		CTexture& Tex = BattleModel.m_UnitTex[ParseString()];
 
-inline void BattleModels::CFile::Rewind(int iCount) noexcept
-{
-	++iCount;
-
-	while (m_pszCurPos != m_pszBuffer && iCount)
-	{
-		--m_pszCurPos;
-
-		if (*m_pszCurPos == ' ')
-			--iCount;
+		Tex.m_szTex = ParseString();
+		Tex.m_szNorm = ParseString();
+		Tex.m_szSprite = ParseString();
 	}
 
-	SkipUntilNonspace();
-}
+	// Region 4: attachment texture
+	iMaxSize = ParseNumber();
+	BattleModel.m_AttachmentTex.reserve(iMaxSize);
 
-inline void BattleModels::CFile::RewindUntilNonspace(void) noexcept
-{
-	while (m_pszCurPos != m_pszBuffer && std::isspace(*m_pszCurPos))
+	for (auto i = 0; i < iMaxSize; ++i)
 	{
-		--m_pszCurPos;
+		CTexture& Tex = BattleModel.m_AttachmentTex[ParseString()];
+
+		Tex.m_szTex = ParseString();
+		Tex.m_szNorm = ParseString();
+		Tex.m_szSprite = ParseString();
 	}
+
+	// Region 5: Stances
+	if constexpr (bSpecial)
+		Skip(2);
+
+	BattleModel.m_rgStances.resize(ParseNumber());
+
+	if constexpr (bSpecial)
+		Skip(2);
+
+	for (auto& Stance : BattleModel.m_rgStances)
+	{
+		Stance.m_Mount.m_szType = ParseString();
+		Stance.m_Mount.m_szWpn1 = ParseString();
+		Stance.m_Mount.m_szWpn2 = ParseString();
+
+		Stance.m_rgszPrim.resize(ParseNumber());
+		for (auto& Eqp : Stance.m_rgszPrim)
+			Eqp = ParseString();
+
+		Stance.m_rgszSec.resize(ParseNumber());
+		for (auto& Eqp : Stance.m_rgszSec)
+			Eqp = ParseString();
+	}
+
+	if constexpr (bSpecial)
+		Skip(2);
+
+	// Region 6: Unknow numbers.
+	BattleModel.m_iMysteryNum = ParseNumber();
+	BattleModel.m_MysteryVector1[0] = ParseNumber<float>();
+	BattleModel.m_MysteryVector1[1] = ParseNumber<float>();
+	BattleModel.m_MysteryVector1[2] = ParseNumber<float>();
+	BattleModel.m_MysteryVector2[0] = ParseNumber<float>();
+	BattleModel.m_MysteryVector2[1] = ParseNumber<float>();
+	BattleModel.m_MysteryVector2[2] = ParseNumber<float>();
+
+	if constexpr (bSpecial)
+		Skip(2);
 }
 
-inline string BattleModels::CFile::ParseString(void) noexcept
+template <typename T>
+T BattleModels::CFile::ParseNumber(void) noexcept
 {
-	int iSize = UTIL_StrToNum<int>(ParseBySpace());
+	return UTIL_StrToNum<T>(Parse());
+}
+
+string_view BattleModels::CFile::ParseString(void) noexcept
+{
+	auto const iSize = ParseNumber();
+
 	if (iSize <= 0)
 		return "";
 
-	string ret;
-	ret.reserve(iSize + 1);
-
-	for (; m_pszCurPos != m_pBufEnd && iSize; ++m_pszCurPos, --iSize)
-	{
-		ret.push_back(*m_pszCurPos);
-	}
-
 	SkipUntilNonspace();
-	return ret;
-}
-
-inline string BattleModels::CFile::ReadN(int iCount) noexcept
-{
-	string ret;
-
-	for (; m_pszCurPos != m_pBufEnd && iCount; ++m_pszCurPos, --iCount)
-	{
-		ret.push_back(*m_pszCurPos);
-	}
-
-	return ret;
-}
-
-inline string BattleModels::CFile::ParseBySpace(void) noexcept
-{
-	string ret;
-
-	for (char* p = m_pszCurPos; m_pszCurPos != m_pBufEnd; ++m_pszCurPos)
-	{
-		if (*m_pszCurPos == ' ')
-			break;
-
-		ret.push_back(*m_pszCurPos);
-	}
-
-	SkipUntilNonspace();
-	return ret;
-}
-
-inline bool BattleModels::CFile::Eof(void) const noexcept
-{
-	return m_pszCurPos == m_pBufEnd;
-}
-
-inline void BattleModels::CFile::Seek(int iOffset, int iMode) noexcept
-{
-	switch (iMode)
-	{
-	case SEEK_SET:
-		m_pszCurPos = m_pszBuffer;
-		goto LAB_HANDLE_OFS;
-
-	case SEEK_END:
-		m_pszCurPos = m_pBufEnd;
-		[[fallthrough]];
-
-	case SEEK_CUR:
-	LAB_HANDLE_OFS:;
-		if (iOffset > 0)
-			Skip(iOffset);
-		else if (iOffset < 0)
-			Rewind(-iOffset);
-
-	default:
-		break;
-	}
+	return Parse(iSize);
 }
 
 void BattleModels::CFile::Initialize(void) noexcept
@@ -291,26 +281,29 @@ void BattleModels::CFile::Initialize(void) noexcept
 	Seek(0, SEEK_SET);
 	Skip(7);
 
-	m_iTotalModels = UTIL_StrToNum<size_t>(ParseBySpace());
+	m_iTotalModels = ParseNumber();
 	m_rgBattleModels.clear();
 	m_rgBattleModels.reserve(m_iTotalModels);
 
 	Skip(2);
 	if (ParseString() == "blank")
+	{
 		Skip(39);
+		--m_iTotalModels;	// blank count as 1.
+	}
 	else
 	{
 		Rewind(2);	// Going back so that ParseString() reads therefore we can properly get the name.
-		Parse<true>();
+		ParseBlock<true>();
 	}
 
 	for (size_t i = 0; i < m_iTotalModels; ++i)
-		Parse();
+		ParseBlock();
 }
 
 bool BattleModels::CFile::Sanity(void) const noexcept	// #UNDONE
 {
-	for (const auto& BattleModel : m_rgBattleModels)
+	for (const auto& BattleModel : m_rgBattleModels | std::views::values)
 	{
 		if (BattleModel.m_szName.empty())
 		{
@@ -346,150 +339,21 @@ void BattleModels::CFile::Save(const char* pszFilePath) const noexcept
 	fmt::println(f, "22 serialization::archive 3 0 0 0 0 {} 0 0 ", Count() + 1);
 	fmt::println(f, "5 blank 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 
-	for (const auto& BattleModel : m_rgBattleModels)
-	{
+	for (const auto& BattleModel : m_rgBattleModels | std::views::values)
 		fmt::print(f, "{}", Serialize(BattleModel));
-	}
 }
 
 size_t BattleModels::CFile::Count(void) const noexcept
 {
 	size_t ret = 0;
 
-	for (const auto& BattleModel : m_rgBattleModels)
+	for (const auto& BattleModel : m_rgBattleModels | std::views::values)
 	{
 		if (!BattleModel.m_szName.empty())
 			++ret;
 	}
 
 	return ret;
-}
-
-template <bool bSpecial>
-inline void BattleModels::CFile::Parse(void) noexcept
-{
-	if (Eof() || m_rgBattleModels.size() >= m_iTotalModels)
-		return;
-
-	// Mark for special if this version had been called.
-	if constexpr (bSpecial)
-		m_bSpecialFirst = true;
-
-	// Pre-allocate
-	m_rgBattleModels.emplace_back();
-	CBattleModel& BattleModel = m_rgBattleModels.back();
-
-	// Region 1: name
-	BattleModel.m_szName = ParseString();
-
-	// Region 2: mesh
-	if constexpr (!bSpecial)
-	{
-		BattleModel.m_rgrgMeshGroup.resize(UTIL_StrToNum<size_t>(ParseBySpace()));
-
-		for (auto& rgMeshGroup : BattleModel.m_rgrgMeshGroup)
-		{
-			rgMeshGroup.resize(UTIL_StrToNum<size_t>(ParseBySpace()));
-
-			for (auto& Mesh : rgMeshGroup)
-			{
-				Mesh.m_szPath.reserve(UTIL_StrToNum<size_t>(ParseBySpace()));
-				Mesh.m_szPath = ParseBySpace();
-				Mesh.m_iDistance = UTIL_StrToNum<size_t>(ParseBySpace());
-			}
-		}
-	}
-	else
-	{
-		BattleModel.m_rgrgMeshGroup.resize(1);	// For the "mount_pony", always be one.
-		Skip(3);
-
-		auto& rgMeshGroup = BattleModel.m_rgrgMeshGroup.front();
-		rgMeshGroup.resize(UTIL_StrToNum<size_t>(ParseBySpace()));
-		Skip(2);
-
-		for (auto& Mesh : rgMeshGroup)
-		{
-			Mesh.m_szPath.reserve(UTIL_StrToNum<size_t>(ParseBySpace()));
-			Mesh.m_szPath = ParseBySpace();
-			Mesh.m_iDistance = UTIL_StrToNum<size_t>(ParseBySpace());
-		}
-	}
-
-	// Region 3: unit texture
-	if constexpr (bSpecial)	// It's like "0 0 28 0 0 " for "mount_pony"
-		Skip(2);
-
-	size_t iMaxSize = UTIL_StrToNum<size_t>(ParseBySpace());
-	BattleModel.m_UnitTex.reserve(iMaxSize);
-
-	if constexpr (bSpecial)
-		Skip(2);
-
-	for (size_t i = 0; i < iMaxSize; ++i)
-	{
-		//CTexture& Tex = BattleModel.m_UnitTex[ParseString()];
-		auto& [szCountry, Tex] = BattleModel.m_UnitTex.emplace_back();
-
-		szCountry = ParseString();
-		Tex.m_szTex = ParseString();
-		Tex.m_szNorm = ParseString();
-		Tex.m_szSprite = ParseString();
-	}
-
-	// Region 4: attachment texture
-	iMaxSize = UTIL_StrToNum<size_t>(ParseBySpace());
-	BattleModel.m_AttachmentTex.reserve(iMaxSize);
-
-	for (size_t i = 0; i < iMaxSize; ++i)
-	{
-		//CTexture& Tex = BattleModel.m_AttachmentTex[ParseString()];
-		auto& [szCountry, Tex] = BattleModel.m_AttachmentTex.emplace_back();
-
-		szCountry = ParseString();
-		Tex.m_szTex = ParseString();
-		Tex.m_szNorm = ParseString();
-		Tex.m_szSprite = ParseString();
-	}
-
-	// Region 5: Stances
-	if constexpr (bSpecial)
-		Skip(2);
-
-	BattleModel.m_rgStances.resize(UTIL_StrToNum<size_t>(ParseBySpace()));
-
-	if constexpr (bSpecial)
-		Skip(2);
-
-	for (auto& Stance : BattleModel.m_rgStances)
-	{
-		Stance.m_Mount.m_szType = ParseString();
-		Stance.m_Mount.m_szWpn1 = ParseString();
-		Stance.m_Mount.m_szWpn2 = ParseString();
-
-		Stance.m_rgszPrim.resize(UTIL_StrToNum<size_t>(ParseBySpace()));
-		for (auto& Eqp : Stance.m_rgszPrim)
-			Eqp = ParseString();
-
-		Stance.m_rgszSec.resize(UTIL_StrToNum<size_t>(ParseBySpace()));
-		for (auto& Eqp : Stance.m_rgszSec)
-			Eqp = ParseString();
-	}
-
-	if constexpr (bSpecial)
-		Skip(2);
-
-	// Region 6: Unknow numbers.
-	BattleModel.m_iMysteryNum = UTIL_StrToNum<int32_t>(ParseBySpace());
-	BattleModel.m_MysteryVector1[0] = UTIL_StrToNum<float>(ParseBySpace());
-	BattleModel.m_MysteryVector1[1] = UTIL_StrToNum<float>(ParseBySpace());
-	BattleModel.m_MysteryVector1[2] = UTIL_StrToNum<float>(ParseBySpace());
-	BattleModel.m_MysteryVector2[0] = UTIL_StrToNum<float>(ParseBySpace());
-	BattleModel.m_MysteryVector2[1] = UTIL_StrToNum<float>(ParseBySpace());
-	BattleModel.m_MysteryVector2[2] = UTIL_StrToNum<float>(ParseBySpace());
-
-	if constexpr (bSpecial)
-		Skip(2);
 }
 
 set<fs::path> BattleModels::CTexture::ListOfFiles(fs::path const& DataPath) const noexcept

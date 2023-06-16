@@ -18,6 +18,8 @@
 #include "Modules/battle_models.hpp"
 #include "Modules/export_descr_unit.hpp"
 
+#include "String.hpp"
+
 namespace fs = std::filesystem;
 
 using namespace std::literals;
@@ -29,21 +31,6 @@ using std::string;
 using std::string_view;
 using std::variant;
 using std::vector;
-
-generator<string_view> Split(string_view sz, string_view delimiters = ", \n\f\v\t\r"sv) noexcept
-{
-	for (auto lastPos = sz.find_first_not_of(delimiters, 0), pos = sz.find_first_of(delimiters, lastPos);
-		sz.npos != pos || sz.npos != lastPos;
-		lastPos = sz.find_first_not_of(delimiters, pos), pos = sz.find_first_of(delimiters, lastPos)
-		)
-	{
-		co_yield string_view{
-			sz.substr(lastPos, pos - lastPos) | std::views::drop_while([](const char c) noexcept { return std::isspace(c); })
-		};
-	}
-
-	co_return;
-}
 
 extern void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, string_view szFaction) noexcept;
 

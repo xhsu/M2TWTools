@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) noexcept
 	// ---------------------------------------
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	// Setup Dear ImGui context
