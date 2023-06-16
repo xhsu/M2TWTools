@@ -13,7 +13,9 @@ namespace UnitsVoice
 	using std::string_view;
 	using std::tuple;
 	using std::vector;
-	using std::map;
+
+	template <typename K, typename V>
+	using Dictionary = std::map<K, V, CaseIgnoredLess>;
 
 	struct CEvent final
 	{
@@ -37,7 +39,7 @@ namespace UnitsVoice
 	struct CClass final
 	{
 		string_view m_Name{};
-		map<string_view, CVocal> m_Vocals{};
+		Dictionary<string_view, CVocal> m_Vocals{};
 
 		string Serialize() const noexcept;
 	};
@@ -45,7 +47,7 @@ namespace UnitsVoice
 	struct CAccent final
 	{
 		string_view m_Name{};
-		map<string_view, CClass> m_Classes{};
+		Dictionary<string_view, CClass> m_Classes{};
 
 		string Serialize() const noexcept;
 	};
@@ -68,7 +70,7 @@ namespace UnitsVoice
 		static inline constexpr auto m_fnNameOf = [](auto&& obj) noexcept { return obj.m_Name; };
 
 	public:
-		map<string_view, CAccent> m_Accents{};
+		Dictionary<string_view, CAccent> m_Accents{};
 
 		inline bool operator== (CUnitVoices const& rhs) const noexcept { return Serialize() == rhs.Serialize(); }
 

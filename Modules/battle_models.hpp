@@ -6,9 +6,9 @@
 #pragma once
 
 #include <array>
+#include <map>	// #UPDATE_AT_CPP23 flat_map
 #include <set>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 #include "String.hpp"
@@ -22,7 +22,7 @@ namespace BattleModels
 	using std::vector;
 
 	template <typename K, typename V>
-	using Dictionary = std::unordered_map<K, V, CaseIgnoredString, CaseIgnoredString>;
+	using Dictionary = std::map<K, V, CaseIgnoredLess>;
 
 	struct CMesh final
 	{

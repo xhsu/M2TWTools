@@ -54,7 +54,7 @@ protected:
 	auto Tell() const noexcept { return m_cur - m_p; }
 };
 
-struct CaseIgnoredString final
+struct CaseIgnoredHash final
 {
 	// #UPDATE_AT_CPP23 static operator()
 
@@ -65,4 +65,13 @@ struct CaseIgnoredString final
 	// Equal
 	__forceinline bool operator() (std::string_view const& lhs, std::string_view const& rhs) const noexcept { return strieql(lhs, rhs); }
 	__forceinline bool operator() (std::wstring_view const& lhs, std::wstring_view const& rhs) const noexcept { return wcsieql(lhs, rhs); }
+};
+
+struct CaseIgnoredLess final
+{
+	// #UPDATE_AT_CPP23 static operator()
+
+	// Less
+	bool operator() (std::string_view const& lhs, std::string_view const& rhs) const noexcept;
+	bool operator() (std::wstring_view const& lhs, std::wstring_view const& rhs) const noexcept;
 };

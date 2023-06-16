@@ -192,7 +192,7 @@ inline void BattleModels::CFile::ParseBlock(void) noexcept
 		Skip(2);
 
 	auto iMaxSize = ParseNumber();
-	BattleModel.m_UnitTex.reserve(iMaxSize);
+	/*BattleModel.m_UnitTex.reserve(iMaxSize);*/
 
 	if constexpr (bSpecial)
 		Skip(2);
@@ -208,7 +208,7 @@ inline void BattleModels::CFile::ParseBlock(void) noexcept
 
 	// Region 4: attachment texture
 	iMaxSize = ParseNumber();
-	BattleModel.m_AttachmentTex.reserve(iMaxSize);
+	/*BattleModel.m_AttachmentTex.reserve(iMaxSize);*/
 
 	for (auto i = 0; i < iMaxSize; ++i)
 	{
@@ -283,7 +283,7 @@ void BattleModels::CFile::Initialize(void) noexcept
 
 	m_iTotalModels = ParseNumber();
 	m_rgBattleModels.clear();
-	m_rgBattleModels.reserve(m_iTotalModels);
+	/*m_rgBattleModels.reserve(m_iTotalModels);*/
 
 	Skip(2);
 	if (ParseString() == "blank")

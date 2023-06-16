@@ -272,7 +272,7 @@ void CBaseParser::Seek(ptrdiff_t iOffset, int iMode /*= SEEK_CUR*/) noexcept
 	}
 }
 
-size_t CaseIgnoredString::operator()(std::string_view const& sz) const noexcept
+size_t CaseIgnoredHash::operator()(std::string_view const& sz) const noexcept
 {
 	static std::hash<string> fnHash{};
 
@@ -283,7 +283,7 @@ size_t CaseIgnoredString::operator()(std::string_view const& sz) const noexcept
 	);
 }
 
-size_t CaseIgnoredString::operator()(std::wstring_view const& sz) const noexcept
+size_t CaseIgnoredHash::operator()(std::wstring_view const& sz) const noexcept
 {
 	static std::hash<wstring> fnHash{};
 
@@ -292,4 +292,32 @@ size_t CaseIgnoredString::operator()(std::wstring_view const& sz) const noexcept
 		| std::views::transform(ToWLower)
 		| std::ranges::to<wstring>()
 	);
+}
+
+bool CaseIgnoredLess::operator()(std::string_view const& lhs, std::string_view const& rhs) const noexcept
+{
+	for (auto&& [lc, rc] : std::views::zip(lhs, rhs))
+	{
+		auto const lci = ToLower(lc);
+		auto const rci = ToLower(rc);
+
+		if (lci < rci)
+			return true;
+	}
+
+	return lhs.length() < rhs.length();
+}
+
+bool CaseIgnoredLess::operator()(std::wstring_view const& lhs, std::wstring_view const& rhs) const noexcept
+{
+	for (auto&& [lc, rc] : std::views::zip(lhs, rhs))
+	{
+		auto const lci = ToWLower(lc);
+		auto const rci = ToWLower(rc);
+
+		if (lci < rci)
+			return true;
+	}
+
+	return lhs.length() < rhs.length();
 }
