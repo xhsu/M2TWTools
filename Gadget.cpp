@@ -9,6 +9,8 @@
 #include "Modules/export_descr_sounds_units_voice.hpp"
 #include "Modules/export_descr_unit.hpp"
 
+#include "StringBin/StringBin.hpp"
+
 #include "String.hpp"
 
 namespace fs = std::filesystem;
@@ -84,18 +86,18 @@ void ReadAllCommand(const char* pszPath = R"(C:\Users\xujia\Downloads\EBII_nonin
 	}
 }
 
-inline auto GetRoaster(Units::CFile const& edu, const char* Faction) noexcept
+vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, const char* Faction) noexcept
 {
 	using namespace Units;
 
 	return edu
 		| std::views::filter([&](CUnit const& unit) noexcept { return std::ranges::contains(unit.at("ownership"), Faction); })
-		| std::views::filter([&](CUnit const& unit) noexcept { return !std::ranges::contains(unit.at("attributes"), "mercenary_unit"); })
+//		| std::views::filter([&](CUnit const& unit) noexcept { return !std::ranges::contains(unit.at("attributes"), "mercenary_unit"); })
 		| std::views::transform([](CUnit const& unit) noexcept -> CUnit const* { return &unit; })
 		| std::ranges::to<vector>();
 }
 
-inline auto CrossRef(vector<Units::CUnit const*> const& lhs, vector<Units::CUnit const*> const& rhs) noexcept
+set<Units::CUnit const*> CrossRef(vector<Units::CUnit const*> const& lhs, vector<Units::CUnit const*> const& rhs) noexcept
 {
 	using namespace Units;
 
@@ -120,7 +122,7 @@ inline auto CrossRef(vector<Units::CUnit const*> const& lhs, vector<Units::CUnit
 	return ret;
 }
 
-inline auto CrossRef(Units::CFile const& lhs, Units::CFile const& rhs) noexcept
+set<Units::CUnit const*> CrossRef(Units::CFile const& lhs, Units::CFile const& rhs) noexcept
 {
 	using namespace Units;
 
@@ -140,7 +142,7 @@ inline auto CrossRef(Units::CFile const& lhs, Units::CFile const& rhs) noexcept
 		| std::ranges::to<set>();
 }
 
-inline auto ExtractFactions(set<Units::CUnit const*> const& Roaster) noexcept
+set<string> ExtractFactions(set<Units::CUnit const*> const& Roaster) noexcept
 {
 	set<string> ret{};
 
@@ -373,15 +375,138 @@ void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* i
 	mymod.Save(pszTo);
 }
 
-//auto FindModelEntriesOfUnits(const char* EDU, string_view const* it, size_t len) noexcept
-//{
-//	auto DescrUnits = Units::Deserialize(EDU);
-//	span rgszUnits{ it, len };
-//
-//	set<string> ret{};
-//
-//	for (auto&& szUnit : rgszUnits)
-//	{
-//		auto const pUnit = std::ranges::find(DescrUnits, )
-//	}
-//}
+set<string> FindModelEntriesOfUnits(const char* EDU, string_view const* it, size_t len) noexcept
+{
+	auto DescrUnits = Units::Deserialize(EDU);
+	span rgszUnits{ it, len };
+
+	set<string> ret{};
+
+	for (auto&& szUnit : rgszUnits)
+	{
+		auto const pUnit = std::ranges::find_if(DescrUnits,
+			[&](Units::CUnit const& unit) noexcept -> bool
+			{
+				return unit.at("type")[0] == szUnit;
+			}
+		);
+
+		if (pUnit == DescrUnits.end())
+		{
+			fmt::print(fg(fmt::color::red), "[Error] Unit '{}' cannot be found in '{}'.\n", szUnit, EDU);
+			continue;
+		}
+
+		ret.emplace(pUnit->at("soldier").at(0));	// arg 0 of soldier script command: default model for this unit.
+		ret.insert_range(pUnit->at("armour_ug_models"));	// all models for its upgraded state.
+	}
+
+	return ret;
+}
+
+void CopyUnitUIFiles(fs::path const& szSourceData, fs::path const& szDestData, string_view const* itUnitDictionaryEntry, size_t len) noexcept
+{
+	span rgszUnits{ itUnitDictionaryEntry, len };
+	set<fs::path> SourceFiles{};
+
+	for (auto&& Entry : fs::recursive_directory_iterator(szSourceData / "UI"))
+	{
+		for (auto&& szDic : rgszUnits)
+		{
+			if (fs::path Path{ Entry }; std::ranges::contains_subrange(
+				Path.filename().u8string(),
+				szDic,
+				{},
+				ToLower,
+				ToLower
+			))
+			{
+				SourceFiles.emplace(std::move(Path));
+			}
+		}
+	}
+
+	for (auto&& file : SourceFiles)
+	{
+		auto& from = file;
+		auto const to = szDestData / fs::relative(from, szSourceData);
+
+		if (fs::exists(to))
+		{
+			fmt::print(fg(fmt::color::gray), "[Message] Skipping existing file: {}\n", to);
+			continue;
+		}
+
+		if (fs::exists(from))
+		{
+			std::error_code ec{};
+			fs::create_directories(to.parent_path());
+			fs::copy(from, to, fs::copy_options::recursive | fs::copy_options::skip_existing, ec);
+
+			if (ec)
+				fmt::print(fg(fmt::color::red), "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
+		}
+		else
+			fmt::print(fg(fmt::color::red), "[Error] FILE no found: {}\n", from.u8string());
+	}
+}
+
+void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, string_view const* itUnitDictionaryEntry, size_t len) noexcept
+{
+	auto const from = SourceData / L"text" / L"export_units.txt.strings.bin";
+	auto const to = DestData / L"text" / L"export_units.txt.strings.bin";
+	auto const to_txt = DestData / L"text" / L"export_units.txt";
+
+	span rgszUnits{ itUnitDictionaryEntry, len };
+
+	map<string, string, CaseIgnoredLess> rgszDest{};
+	if (auto f = _wfopen(to.c_str(), L"rb"); f)
+	{
+		for (auto&& [pszKey, iKeyLen, pszValue, iValueLen] : StringsBin::Deserialize(f))
+		{
+			rgszDest.try_emplace(
+				ToUTF8({ reinterpret_cast<wchar_t const*>(pszKey), iKeyLen }),
+				ToUTF8({ reinterpret_cast<wchar_t const*>(pszValue), iValueLen })
+			);
+		}
+
+		fclose(f);
+	}
+
+	// Extract entries from source.
+	if (auto f = _wfopen(from.c_str(), L"rb"); f)
+	{
+		map<string, string, CaseIgnoredLess> rgszTranslations{};
+		for (auto&& [pszKey, iKeyLen, pszValue, iValueLen] : StringsBin::Deserialize(f))
+		{
+			rgszTranslations.try_emplace(
+				ToUTF8({ reinterpret_cast<wchar_t const*>(pszKey), iKeyLen }),
+				ToUTF8({ reinterpret_cast<wchar_t const*>(pszValue), iValueLen })
+			);
+		}
+
+		for (auto&& szUnitDic : rgszUnits)
+		{
+			array<string, 3> const rgszEntries =
+			{
+				(string)szUnitDic,
+				fmt::format("{}_descr", szUnitDic),
+				fmt::format("{}_descr_short", szUnitDic),
+			};
+
+			for (auto&& szEntry : rgszEntries)
+			{
+				if (rgszDest.contains(szEntry))
+					fmt::print(fg(fmt::color::golden_rod), "[Warning] Entry '{}' already exist in dest file.", szEntry);
+				else if (rgszTranslations.contains(szEntry))
+					rgszDest.try_emplace(szEntry, rgszTranslations[szEntry]);
+				else
+					fmt::print(fg(fmt::color::red), "[Error] Entry: '{}' no found in {}\n", szEntry, from);
+			};
+		}
+
+		fclose(f);
+	}
+
+	StringsBin::Serialize(to_txt.c_str(), rgszDest);
+}

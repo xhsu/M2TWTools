@@ -5,51 +5,12 @@
 #include <wctype.h>
 
 #include <algorithm>
+#include <codecvt>
 #include <ranges>
 
 using namespace std;
 using namespace std::experimental;
 using namespace std::literals;
-
-static inline constexpr bool IsSpace(char const c) noexcept
-{
-	if (c & 0b10000000)
-		return false;
-
-	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
-}
-
-inline constexpr char ToLower(char const c) noexcept
-{
-	if ('A' <= c && c <= 'Z')
-		return static_cast<char>(c - 'A' + 'a');
-
-	return c;
-}
-
-inline constexpr char ToUpper(char const c) noexcept
-{
-	if ('a' <= c && c <= 'z')
-		return static_cast<char>(c - 'a' + 'A');
-
-	return c;
-}
-
-inline constexpr wchar_t ToWLower(wchar_t const c) noexcept
-{
-	if (L'A' <= c && c <= L'Z')
-		return static_cast<wchar_t>(c - L'A' + L'a');
-
-	return c;
-}
-
-inline constexpr wchar_t ToWUpper(wchar_t const c) noexcept
-{
-	if (L'a' <= c && c <= L'z')
-		return static_cast<wchar_t>(c - L'a' + L'A');
-
-	return c;
-}
 
 bool wcsieql(std::wstring_view lhs, std::wstring_view rhs) noexcept
 {
@@ -87,6 +48,46 @@ generator<string_view> UTIL_Split(string_view sz, string_view delimiters, bool b
 	}
 
 	co_return;
+}
+
+std::string ToUTF8(std::wstring_view wsz) noexcept
+{
+	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+
+	try
+	{
+		//std::string narrow = converter.to_bytes(wide_utf16_source_string);
+		//std::wstring wide = converter.from_bytes(narrow_utf8_source_string);
+		return converter.to_bytes(wsz.data(), wsz.data() + wsz.length());
+	}
+	catch (const std::exception& e)
+	{
+		return "[Error] Cannot convert: "s + e.what();
+	}
+	catch (...)
+	{
+		return "[Error] Unspecified exception!";
+	}
+}
+
+std::wstring ToUTF16(std::string_view sz) noexcept
+{
+	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+
+	try
+	{
+		//std::string narrow = converter.to_bytes(wide_utf16_source_string);
+		//std::wstring wide = converter.from_bytes(narrow_utf8_source_string);
+		return converter.from_bytes(sz.data(), sz.data() + sz.length());
+	}
+	catch (const std::exception& e)
+	{
+		return L"[Error] Cannot convert: "s + converter.from_bytes(e.what());
+	}
+	catch (...)
+	{
+		return L"[Error] Unspecified exception!";
+	}
 }
 
 CBaseParser::CBaseParser(std::filesystem::path const& Path) noexcept
@@ -301,8 +302,10 @@ bool CaseIgnoredLess::operator()(std::string_view const& lhs, std::string_view c
 		auto const lci = ToLower(lc);
 		auto const rci = ToLower(rc);
 
-		if (lci < rci)
-			return true;
+		if (lci == rci)
+			continue;
+
+		return lci < rci;
 	}
 
 	return lhs.length() < rhs.length();
@@ -315,8 +318,10 @@ bool CaseIgnoredLess::operator()(std::wstring_view const& lhs, std::wstring_view
 		auto const lci = ToWLower(lc);
 		auto const rci = ToWLower(rc);
 
-		if (lci < rci)
-			return true;
+		if (lci == rci)
+			continue;
+
+		return lci < rci;
 	}
 
 	return lhs.length() < rhs.length();

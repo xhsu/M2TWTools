@@ -76,7 +76,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="StringBin.cpp" />
+    <ClCompile Include="Program.cpp" />
+    <ClCompile Include="StringsBin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="StringBin.hpp" />

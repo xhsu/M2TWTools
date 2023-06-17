@@ -4,10 +4,53 @@
 #include <filesystem>
 #include <string_view>
 
+inline constexpr bool IsSpace(char const c) noexcept
+{
+	if (c & 0b10000000)
+		return false;
+
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
+}
+
+inline constexpr char ToLower(char const c) noexcept
+{
+	if ('A' <= c && c <= 'Z')
+		return static_cast<char>(c - 'A' + 'a');
+
+	return c;
+}
+
+inline constexpr char ToUpper(char const c) noexcept
+{
+	if ('a' <= c && c <= 'z')
+		return static_cast<char>(c - 'a' + 'A');
+
+	return c;
+}
+
+inline constexpr wchar_t ToWLower(wchar_t const c) noexcept
+{
+	if (L'A' <= c && c <= L'Z')
+		return static_cast<wchar_t>(c - L'A' + L'a');
+
+	return c;
+}
+
+inline constexpr wchar_t ToWUpper(wchar_t const c) noexcept
+{
+	if (L'a' <= c && c <= L'z')
+		return static_cast<wchar_t>(c - L'a' + L'A');
+
+	return c;
+}
+
 bool wcsieql(std::wstring_view lhs, std::wstring_view rhs) noexcept;
 bool strieql(std::string_view lhs, std::string_view rhs) noexcept;
 
 std::experimental::generator<std::string_view> UTIL_Split(std::string_view sz, std::string_view delimiters = ", \n\f\v\t\r", bool bLTrim = true) noexcept;
+
+std::string ToUTF8(std::wstring_view wsz) noexcept;
+std::wstring ToUTF16(std::string_view sz) noexcept;
 
 class CBaseParser
 {

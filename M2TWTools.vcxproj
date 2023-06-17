@@ -17,12 +17,14 @@
     <ClCompile Include="Quick.cpp" />
     <ClCompile Include="Modules\export_descr_sounds_units_voice.cpp" />
     <ClCompile Include="String.cpp" />
+    <ClCompile Include="StringBin\StringsBin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Modules\battle_models.hpp" />
     <ClInclude Include="Modules\export_descr_unit.hpp" />
     <ClInclude Include="Modules\export_descr_sounds_units_voice.hpp" />
     <ClInclude Include="String.hpp" />
+    <ClInclude Include="StringBin\StringBin.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="String.natvis" />

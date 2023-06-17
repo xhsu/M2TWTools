@@ -13,6 +13,9 @@
     <ClCompile Include="Modules\export_descr_unit.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
+    <ClCompile Include="StringBin\StringsBin.cpp">
+      <Filter>StringBin</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="String.hpp" />
@@ -25,10 +28,16 @@
     <ClInclude Include="Modules\export_descr_unit.hpp">
       <Filter>Modules</Filter>
     </ClInclude>
+    <ClInclude Include="StringBin\StringBin.hpp">
+      <Filter>StringBin</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Modules">
       <UniqueIdentifier>{2ae73a1d-af27-470d-9224-28b19ed3837e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="StringBin">
+      <UniqueIdentifier>{fb68bb32-44ee-4ac1-a813-4e7ef859776c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

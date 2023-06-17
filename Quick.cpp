@@ -4,6 +4,7 @@
 
 //#include "Modules/export_descr_sounds_units_voice.hpp"
 //#include "Modules/battle_models.hpp"
+#include "Modules/export_descr_unit.hpp"
 #include "String.hpp"
 
 #include <assert.h>
@@ -21,6 +22,10 @@ using namespace std::literals;
 extern void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* it, size_t len) noexcept;
 extern void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, string_view const* pArrayOfUnitNames, size_t len) noexcept;
 extern set<string> AssembleUnitUIFiles(fs::path const& DataPath, string_view szDic) noexcept;
+extern set<string> FindModelEntriesOfUnits(const char* EDU, string_view const* it, size_t len) noexcept;
+extern vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, const char* Faction) noexcept;
+extern set<Units::CUnit const*> CrossRef(vector<Units::CUnit const*> const& lhs, vector<Units::CUnit const*> const& rhs) noexcept;
+extern void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, string_view const* itUnitDictionaryEntry, size_t len) noexcept;
 
 inline void CopyFiles(std::ranges::input_range auto&& files, fs::path const& SourceFolder, fs::path const& DestFolder) noexcept
 {
@@ -119,15 +124,39 @@ struct CTest final : public CBaseParser
 using stuff_t = tuple<int, string_view, float, short>;
 char words[]{ "keyword            1, text, 0.999, -3\t" };
 
+
+inline constexpr array TurksUnits =
+{
+	"Hasham"sv,
+	"iqta'dar"sv,
+	"Dismounted Hasham"sv,
+	"Kurdish Auxiliaries"sv,
+	"Turkish Crossbowmen"sv,
+	"Ahdath"sv,
+};
+
+inline constexpr array TurksUnits_Dict =
+{
+	"Hasham"sv,
+	"iqta'dar"sv,
+	"Dismounted_Hasham"sv,
+	"Kurdish_Auxiliaries"sv,
+	"Turkish_Crossbowmen"sv,
+	"Ahdath"sv,
+};
+
 int main(int, char* []) noexcept
 {
-	map<string_view, int, CaseIgnoredLess> Dict{};
+	//auto const ModelEntries = FindModelEntriesOfUnits(
+	//	R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\Unpacked\crusades_data\export_descr_unit.txt)",
+	//	TurksUnits.data(),
+	//	TurksUnits.size()
+	//);
 
-	Dict["A"] = 1;
-	fmt::print("{}\n", Dict["a"]);
-
-	Dict["aBC"] = 999;
-	fmt::print("{}\n", Dict["Abc"]);
-
-	fmt::print("{}\n", Dict);
+	CopyUnitStringsBin(
+		R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\Unpacked\crusades_data)",
+		R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\mods\bare_geomod\data)",
+		TurksUnits_Dict.data(),
+		TurksUnits_Dict.size()
+	);
 }

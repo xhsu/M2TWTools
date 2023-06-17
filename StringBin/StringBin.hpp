@@ -1,56 +1,43 @@
 #pragma once
 
-#include <experimental/generator>
+#include "String.hpp"
 
-#include <stdint.h>
-#include <stdio.h>
-
-#include <tuple>
-
-using std::experimental::generator;
-using std::tuple;
-
-inline generator<tuple<char16_t const *, std::int16_t, char16_t const *, std::int16_t>> ParseStringsBin(FILE *f) noexcept
+namespace StringsBin
 {
-	fseek(f, 0, SEEK_SET);
+	namespace fs = std::filesystem;
 
-	std::int16_t iStyle1 = 0, iStyle2 = 0;
-	fread(&iStyle1, sizeof(iStyle1), 1, f);
-	fread(&iStyle2, sizeof(iStyle2), 1, f);
+	using std::experimental::generator;
+	using std::tuple;
 
-	if (iStyle1 != 2 || iStyle2 != 2048)
+	generator<tuple<char16_t const*, size_t, char16_t const*, size_t>> Deserialize(FILE* f) noexcept;
+	void Serialize(fs::path const& out, std::ranges::input_range auto&& rgszTranslations) noexcept
 	{
-		co_yield std::make_tuple(nullptr, iStyle1, nullptr, iStyle2);
-		co_return;	// WHY WHY WHY???? WHY CAN'T I JUST co_return A TUPLE?!
+		static_assert(
+			requires
+			{
+				{ std::get<0>(*std::begin(rgszTranslations)) } -> std::convertible_to<std::string_view>;
+				{ std::get<1>(*std::begin(rgszTranslations)) } -> std::convertible_to<std::string_view>;
+			},
+			"Requires the range to be tuple-binded into two string_view!"
+		);
+
+		if (auto f = _wfopen(out.c_str(), L"w, ccs=UTF-16LE"); f)
+		{
+			fwrite(u"¬\n", sizeof(char16_t), 2, f);	// Under "wt" mode(default), Windows interpret \n as CRLF eol. And consider \r\n as LF eol.
+
+			for (auto&& [szKey, szValue] : rgszTranslations)
+			{
+				auto const wcsKey = ToUTF16(szKey);
+				auto const wcsValue = ToUTF16(szValue);
+
+				fwrite(u"{", sizeof(char16_t), 1, f);
+				fwrite(wcsKey.c_str(), sizeof(char16_t), wcsKey.length(), f);
+				fwrite(u"}", sizeof(char16_t), 1, f);
+				fwrite(wcsValue.c_str(), sizeof(char16_t), wcsValue.length(), f);
+				fwrite(u"\n", sizeof(char16_t), 1, f);
+			}
+
+			fclose(f);
+		}
 	}
-
-	std::int32_t iCount = 0;
-	fread(&iCount, sizeof(iCount), 1, f);
-
-	char16_t *pszKey = nullptr, *pszValue = nullptr;
-	std::int16_t iKeyLength = 0, iValueLength = 0;
-
-	for (int i = 0; i < iCount; ++i)
-	{
-		iKeyLength = 0;
-		fread(&iKeyLength, sizeof(iKeyLength), 1, f);
-
-		pszKey = (char16_t *)realloc(pszKey, (iKeyLength + 1) * sizeof(char16_t));
-		pszKey[iKeyLength] = u'\0';
-		fread(pszKey, sizeof(char16_t), iKeyLength, f);
-
-		iValueLength = 0;
-		fread(&iValueLength, sizeof(iValueLength), 1, f);
-
-		pszValue = (char16_t *)realloc(pszValue, (iValueLength + 1) * sizeof(char16_t));
-		pszValue[iValueLength] = u'\0';
-		fread(pszValue, sizeof(char16_t), iValueLength, f);
-
-		co_yield std::make_tuple(pszKey, iKeyLength, pszValue, iValueLength);
-	}
-
-	free(pszKey);
-	free(pszValue);
-
-	co_return;
 }
