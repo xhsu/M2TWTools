@@ -23,7 +23,7 @@ namespace StringsBin
 
 		if (auto f = _wfopen(out.c_str(), L"w, ccs=UTF-16LE"); f)
 		{
-			fwrite(u"¬\n", sizeof(char16_t), 2, f);	// Under "wt" mode(default), Windows interpret \n as CRLF eol. And consider \r\n as LF eol.
+			fwrite(u"Â¬\n", sizeof(char16_t), 2, f);	// Under "wt" mode(default), Windows interpret \n as CRLF eol. And consider \r\n as LF eol.
 
 			for (auto&& [szKey, szValue] : rgszTranslations)
 			{
