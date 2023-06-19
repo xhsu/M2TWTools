@@ -19,6 +19,15 @@ using namespace std;
 using namespace std::experimental;
 using namespace std::literals;
 
+namespace Gadget
+{
+	template <typename K, typename V>
+	using Dictionary = std::map<K, V, CaseIgnoredLess>;
+
+	template <typename T>
+	using Set = std::set<T, CaseIgnoredLess>;
+}
+
 
 void ReadAllCommand(const char* pszPath = R"(C:\Users\xujia\Downloads\EBII_noninstaller\mods\ebii\data\export_descr_buildings.txt)") noexcept
 {
@@ -347,14 +356,14 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 	DestinationModelDB.Save(pszModelDbTo);
 }
 
-void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* it, size_t len) noexcept
+void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* pArrayOfUnitNames, size_t len) noexcept
 {
 	using namespace UnitsVoice;
 
 	CUnitVoices mymod{ pszTo };
 	CUnitVoices crus{ pszFrom };
 
-	span rgszUnits{ it, len };
+	span rgszUnits{ pArrayOfUnitNames, len };
 
 	for (auto&& szUnit : rgszUnits)
 	{
@@ -375,12 +384,12 @@ void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* i
 	mymod.Save(pszTo);
 }
 
-set<string> FindModelEntriesOfUnits(const char* EDU, string_view const* it, size_t len) noexcept
+set<string, CaseIgnoredLess> FindModelEntriesOfUnits(const char* EDU, string_view const* it, size_t len) noexcept
 {
 	auto DescrUnits = Units::Deserialize(EDU);
 	span rgszUnits{ it, len };
 
-	set<string> ret{};
+	set<string, CaseIgnoredLess> ret{};
 
 	for (auto&& szUnit : rgszUnits)
 	{
@@ -509,4 +518,50 @@ void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, st
 	}
 
 	StringsBin::Serialize(to_txt.c_str(), rgszDest);
+}
+
+void CopyUnitEssentialFiles(fs::path const& SourceData, fs::path const& DestData, string_view const* itUnitNames, size_t len) noexcept
+{
+	span rgszUnits{ itUnitNames, len };
+
+	auto const EDUPath = SourceData / L"export_descr_unit.txt";
+	auto const EDUFile = Units::Deserialize(EDUPath.u8string().c_str());
+
+	auto const rgszDictionaryEntries =
+		EDUFile
+		| std::views::filter([&](Units::CUnit const& unit) noexcept { return std::ranges::contains(rgszUnits, unit.at("type").at(0)); })
+		| std::views::transform([](Units::CUnit const& unit) noexcept -> string_view { return unit.at("dictionary").at(0); })
+		| std::ranges::to<vector>();
+
+	if (rgszUnits.size() != rgszDictionaryEntries.size())
+		fmt::print(fg(fmt::color::golden_rod), "[Warning] Some entries from your input cannot be found in EDU!\n");
+
+	CopyUnitUIFiles(SourceData, DestData, rgszDictionaryEntries.data(), rgszDictionaryEntries.size());
+	CopyUnitStringsBin(SourceData, DestData, rgszDictionaryEntries.data(), rgszDictionaryEntries.size());
+
+	{
+		auto const ModelDbFrom = SourceData / L"unit_models" / L"battle_models.modeldb";
+		auto const ModelDbTo = DestData / L"unit_models" / L"battle_models.modeldb";
+		auto const ret = FindModelEntriesOfUnits(EDUPath.u8string().c_str(), itUnitNames, len);
+		auto const ModelEntries = ret | std::views::transform([](auto&& obj) noexcept -> string_view { return obj; }) | std::ranges::to<vector>();
+
+		CopyBattleModel(
+			ModelDbFrom.u8string().c_str(),
+			ModelDbTo.u8string().c_str(),
+			ModelEntries.data(),
+			ModelEntries.size()
+		);
+	}
+
+	{
+		auto const UnitVoiceFrom = SourceData / L"export_descr_sounds_units_voice.txt";
+		auto const UnitVoiceTo = DestData / L"export_descr_sounds_units_voice.txt";
+
+		CopyUnitVoices(
+			UnitVoiceFrom.u8string().c_str(),
+			UnitVoiceTo.u8string().c_str(),
+			itUnitNames,
+			len
+		);
+	}
 }

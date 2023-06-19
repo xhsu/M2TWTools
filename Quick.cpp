@@ -26,6 +26,7 @@ extern set<string> FindModelEntriesOfUnits(const char* EDU, string_view const* i
 extern vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, const char* Faction) noexcept;
 extern set<Units::CUnit const*> CrossRef(vector<Units::CUnit const*> const& lhs, vector<Units::CUnit const*> const& rhs) noexcept;
 extern void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, string_view const* itUnitDictionaryEntry, size_t len) noexcept;
+extern void CopyUnitEssentialFiles(fs::path const& SourceData, fs::path const& DestData, string_view const* itUnitNames, size_t len) noexcept;
 
 inline void CopyFiles(std::ranges::input_range auto&& files, fs::path const& SourceFolder, fs::path const& DestFolder) noexcept
 {
@@ -153,10 +154,17 @@ int main(int, char* []) noexcept
 	//	TurksUnits.size()
 	//);
 
-	CopyUnitStringsBin(
+	//CopyUnitStringsBin(
+	//	R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\Unpacked\crusades_data)",
+	//	R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\mods\bare_geomod\data)",
+	//	TurksUnits_Dict.data(),
+	//	TurksUnits_Dict.size()
+	//);
+
+	CopyUnitEssentialFiles(
 		R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\Unpacked\crusades_data)",
 		R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\mods\bare_geomod\data)",
-		TurksUnits_Dict.data(),
-		TurksUnits_Dict.size()
+		TurksUnits.data(),
+		TurksUnits.size()
 	);
 }
