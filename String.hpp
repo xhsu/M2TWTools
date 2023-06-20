@@ -44,13 +44,15 @@ inline constexpr wchar_t ToWUpper(wchar_t const c) noexcept
 	return c;
 }
 
-bool wcsieql(std::wstring_view lhs, std::wstring_view rhs) noexcept;
-bool strieql(std::string_view lhs, std::string_view rhs) noexcept;
+extern bool strieql(std::string_view lhs, std::string_view rhs) noexcept;
+extern bool wcsieql(std::wstring_view lhs, std::wstring_view rhs) noexcept;
+extern bool StartsWith_I(std::string_view text, std::string_view what) noexcept;
+extern bool StartsWith_I(std::wstring_view text, std::wstring_view what) noexcept;
 
-std::experimental::generator<std::string_view> UTIL_Split(std::string_view sz, std::string_view delimiters = ", \n\f\v\t\r", bool bLTrim = true) noexcept;
+extern std::experimental::generator<std::string_view> UTIL_Split(std::string_view sz, std::string_view delimiters = ", \n\f\v\t\r", bool bLTrim = true) noexcept;
 
-std::string ToUTF8(std::wstring_view wsz) noexcept;
-std::wstring ToUTF16(std::string_view sz) noexcept;
+extern std::string ToUTF8(std::wstring_view wsz) noexcept;
+extern std::wstring ToUTF16(std::string_view sz) noexcept;
 
 class CBaseParser
 {

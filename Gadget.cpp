@@ -1,7 +1,10 @@
 #include <fmt/color.h>
 #include <fmt/std.h>
 
+#include <assert.h>
+
 #include <experimental/generator>
+#include <functional>
 #include <ranges>
 #include <span>
 
@@ -26,6 +29,11 @@ namespace Gadget
 
 	template <typename T>
 	using Set = std::set<T, CaseIgnoredLess>;
+
+	inline constexpr auto Error = fmt::fg(fmt::color::red);
+	inline constexpr auto Info = fmt::fg(fmt::color::gray);
+	inline constexpr auto Progress = fmt::fg(fmt::color::light_slate_gray);
+	inline constexpr auto Warning = fmt::fg(fmt::color::golden_rod);
 }
 
 
@@ -95,12 +103,12 @@ void ReadAllCommand(const char* pszPath = R"(C:\Users\xujia\Downloads\EBII_nonin
 	}
 }
 
-vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, const char* Faction) noexcept
+vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, string_view szFaction) noexcept
 {
 	using namespace Units;
 
 	return edu
-		| std::views::filter([&](CUnit const& unit) noexcept { return std::ranges::contains(unit.at("ownership"), Faction); })
+		| std::views::filter([&](CUnit const& unit) noexcept { return std::ranges::contains(unit.at("ownership"), szFaction); })
 //		| std::views::filter([&](CUnit const& unit) noexcept { return !std::ranges::contains(unit.at("attributes"), "mercenary_unit"); })
 		| std::views::transform([](CUnit const& unit) noexcept -> CUnit const* { return &unit; })
 		| std::ranges::to<vector>();
@@ -149,6 +157,22 @@ set<Units::CUnit const*> CrossRef(Units::CFile const& lhs, Units::CFile const& r
 		| std::views::filter([&](CUnit const& elem) noexcept -> bool { return !std::ranges::contains(rhs, elem.at("type")[0], [](CUnit const& r_el) noexcept { return r_el.at("type")[0]; }); })
 		| std::views::transform([](CUnit const& elem) noexcept { return &elem; })
 		| std::ranges::to<set>();
+}
+
+void ListFactionUnitPriority(fs::path const& edu, string_view szFaction) noexcept
+{
+	auto const EDU = Units::Deserialize(edu.u8string().c_str());
+	auto const Roaster = GetRoaster(EDU, szFaction);
+
+	auto const iWidth = std::ranges::max(
+		Roaster
+		| std::views::transform([](auto&& unit) noexcept -> size_t { return unit->at("type").at(0).length(); })
+	);
+
+	for (auto&& unit : Roaster)
+	{
+		fmt::println("unit:{0:*<{1}}{2}", unit->at("type").at(0), iWidth, unit->at("recruit_priority_offset").at(0));
+	}
 }
 
 set<string> ExtractFactions(set<Units::CUnit const*> const& Roaster) noexcept
@@ -237,12 +261,12 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 
 	if (!ModelsToCopy.empty())
 	{
-		fmt::print(fg(fmt::color::light_golden_rod_yellow), "NorwayLib1: {} left.\n", ModelsToCopy.size());
+		fmt::print(Gadget::Warning, "NorwayLib1: {} left.\n", ModelsToCopy.size());
 
 		for (auto&& pModel : ModelsToCopy)
 			fmt::print("Model: <{}> for [{}]\n", pModel->m_szName, fmt::join(pModel->m_UnitTex | std::views::keys, ", "));
 
-		fmt::print(fg(fmt::color::lawn_green), "Inserting entries above this line in.\n");
+		fmt::print(Gadget::Progress, "Inserting entries above this line in.\n");
 
 		for (auto&& pModel : ModelsToCopy)
 		{
@@ -259,7 +283,7 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 
 		if (fs::exists(to))
 		{
-			fmt::print(fg(fmt::color::gray), "[Message] Skipping existing file: {}\n", to);
+			fmt::print(Gadget::Info, "[Message] Skipping existing file: {}\n", to);
 			continue;
 		}
 
@@ -270,10 +294,10 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 			fs::copy(file, to, fs::copy_options::recursive | fs::copy_options::skip_existing, ec);
 
 			if (ec)
-				fmt::print(fg(fmt::color::red), "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
+				fmt::print(Gadget::Error, "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
 		}
 		else
-			fmt::print(fg(fmt::color::red), "[Error] FILE no found: {}\n", file.u8string());
+			fmt::print(Gadget::Error, "[Error] FILE no found: {}\n", file.u8string());
 	}
 }
 
@@ -313,18 +337,18 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 	{
 		if (!SourceModelDB.m_rgBattleModels.contains(szUnit))
 		{
-			fmt::print(fg(fmt::color::red), "[Error] Model def '{}' no found from source file!\n", szUnit);
+			fmt::print(Gadget::Error, "[Error] Model def '{}' no found from source file!\n", szUnit);
 			continue;
 		}
 		else if (DestinationModelDB.m_rgBattleModels.contains(szUnit))
 		{
-			fmt::print(fg(fmt::color::golden_rod), "[Warning] Model def '{}' already exists in dest file!\n", szUnit);
+			fmt::print(Gadget::Warning, "[Warning] Model def '{}' already exists in dest file!\n", szUnit);
 			continue;
 		}
 
 		auto&& Model = SourceModelDB.m_rgBattleModels.at(szUnit);
 
-		fmt::print(fg(fmt::color::gray), "[Message] Model def '{}' inserted.\n", szUnit);
+		fmt::print(Gadget::Info, "[Message] Model def '{}' inserted.\n", szUnit);
 
 		DestinationModelDB.m_rgBattleModels.try_emplace(szUnit, Model);
 		files.insert_range(Model.ListOfFiles(SourceDataFolder));
@@ -336,7 +360,7 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 
 		if (fs::exists(to))
 		{
-			fmt::print(fg(fmt::color::gray), "[Message] Skipping existing file: {}\n", to);
+			fmt::print(Gadget::Info, "[Message] Skipping existing file: {}\n", to);
 			continue;
 		}
 
@@ -347,10 +371,10 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 			fs::copy(file, to, fs::copy_options::recursive | fs::copy_options::skip_existing, ec);
 
 			if (ec)
-				fmt::print(fg(fmt::color::red), "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
+				fmt::print(Gadget::Error, "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
 		}
 		else
-			fmt::print(fg(fmt::color::red), "[Error] FILE no found: {}\n", file.u8string());
+			fmt::print(Gadget::Error, "[Error] FILE no found: {}\n", file.u8string());
 	}
 
 	DestinationModelDB.Save(pszModelDbTo);
@@ -369,15 +393,35 @@ void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* p
 	{
 		for (auto&& [pAcc, pClass, pVoc, pEv] : crus.EveryUnitOf(szUnit))
 		{
-			fmt::println("source: {}/{}/{}/unit {}", pAcc->m_Name, pClass->m_Name, pVoc->m_Name, szUnit);
+			fmt::println("[Info] Event: {}/{}/{}/unit {}", pAcc->m_Name, pClass->m_Name, pVoc->m_Name, szUnit);
 
 			if (auto p = mymod.At(pAcc->m_Name, pClass->m_Name, pVoc->m_Name); p != nullptr)
 			{
+				//auto const bExisted = std::ranges::fold_left(
+				//	p->m_Events
+				//	| std::views::filter([](CEvent const& ev) noexcept -> bool { return ev.m_Type == ev.Unit; })
+				//	| std::views::transform([](CEvent const& ev) noexcept -> vector<string_view> const& { return ev.m_Troops; }),
+				//	false,
+				//	[&](bool prev, vector<string_view> const& rgsz) noexcept -> bool { return prev || std::ranges::contains(rgsz, szUnit); }
+				//);
+
+				if (std::ranges::contains(
+					p->m_Events
+					| std::views::filter([](CEvent const& ev) noexcept -> bool { return ev.m_Type == ev.Unit; })
+					| std::views::transform([](CEvent const& ev) noexcept -> vector<string_view> const& { return ev.m_Troops; })
+					| std::views::join,
+					szUnit)
+					)
+				{
+					fmt::print(Gadget::Warning, "\t[Warning] Unit voice already defined here!\n");
+					continue;
+				}
+
 				p->m_Events.emplace_back(*pEv);
-				fmt::print(fg(fmt::color::gray), "\t[MESSAGE] Copied.\n");
+				fmt::print(Gadget::Info, "\t[Info] Copied.\n");
 			}
 			else
-				fmt::print(fg(fmt::color::red), "\t[ERROR] Structure no found!\n");
+				fmt::print(Gadget::Error, "\t[Info] Structure no found!\n");
 		}
 	}
 
@@ -402,7 +446,7 @@ set<string, CaseIgnoredLess> FindModelEntriesOfUnits(const char* EDU, string_vie
 
 		if (pUnit == DescrUnits.end())
 		{
-			fmt::print(fg(fmt::color::red), "[Error] Unit '{}' cannot be found in '{}'.\n", szUnit, EDU);
+			fmt::print(Gadget::Error, "[Error] Unit '{}' cannot be found in '{}'.\n", szUnit, EDU);
 			continue;
 		}
 
@@ -442,7 +486,7 @@ void CopyUnitUIFiles(fs::path const& szSourceData, fs::path const& szDestData, s
 
 		if (fs::exists(to))
 		{
-			fmt::print(fg(fmt::color::gray), "[Message] Skipping existing file: {}\n", to);
+			fmt::print(Gadget::Info, "[Message] Skipping existing file: {}\n", to);
 			continue;
 		}
 
@@ -453,10 +497,10 @@ void CopyUnitUIFiles(fs::path const& szSourceData, fs::path const& szDestData, s
 			fs::copy(from, to, fs::copy_options::recursive | fs::copy_options::skip_existing, ec);
 
 			if (ec)
-				fmt::print(fg(fmt::color::red), "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
+				fmt::print(Gadget::Error, "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
 		}
 		else
-			fmt::print(fg(fmt::color::red), "[Error] FILE no found: {}\n", from.u8string());
+			fmt::print(Gadget::Error, "[Error] FILE no found: {}\n", from.u8string());
 	}
 }
 
@@ -506,11 +550,11 @@ void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, st
 			for (auto&& szEntry : rgszEntries)
 			{
 				if (rgszDest.contains(szEntry))
-					fmt::print(fg(fmt::color::golden_rod), "[Warning] Entry '{}' already exist in dest file.", szEntry);
+					fmt::print(Gadget::Warning, "[Warning] Entry '{}' already exist in dest file.", szEntry);
 				else if (rgszTranslations.contains(szEntry))
 					rgszDest.try_emplace(szEntry, rgszTranslations[szEntry]);
 				else
-					fmt::print(fg(fmt::color::red), "[Error] Entry: '{}' no found in {}\n", szEntry, from);
+					fmt::print(Gadget::Error, "[Error] Entry: '{}' no found in {}\n", szEntry, from);
 			};
 		}
 
@@ -534,7 +578,7 @@ void CopyUnitEssentialFiles(fs::path const& SourceData, fs::path const& DestData
 		| std::ranges::to<vector>();
 
 	if (rgszUnits.size() != rgszDictionaryEntries.size())
-		fmt::print(fg(fmt::color::golden_rod), "[Warning] Some entries from your input cannot be found in EDU!\n");
+		fmt::print(Gadget::Warning, "[Warning] Some entries from your input cannot be found in EDU!\n");
 
 	CopyUnitUIFiles(SourceData, DestData, rgszDictionaryEntries.data(), rgszDictionaryEntries.size());
 	CopyUnitStringsBin(SourceData, DestData, rgszDictionaryEntries.data(), rgszDictionaryEntries.size());
@@ -564,4 +608,277 @@ void CopyUnitEssentialFiles(fs::path const& SourceData, fs::path const& DestData
 			len
 		);
 	}
+}
+
+void SimplifyBuildingLocale(fs::path const& ExportBuilding) noexcept
+{
+	static constexpr array rgszCultures =
+	{
+		// Empty, as the original default name.
+		""sv,
+
+		// Not alphabetic, but succession hierarchy
+		"_southern_european"sv,
+		"_northern_european"sv,
+		"_eastern_european"sv,
+
+		"_middle_eastern"sv,
+		"_greek"sv,
+
+		"_mesoamerican"sv,
+	};
+
+	static constexpr array rgszBuildingChainNames =
+	{
+		"core_building"sv,
+		"core_castle_building"sv,
+		"tower"sv,
+		"castle_tower"sv,
+		"equestrian"sv,
+		"barracks"sv,
+		"castle_barracks"sv,
+		"professional_military"sv,
+		"missiles"sv,
+		"siege"sv,
+		"castle_siege"sv,
+		"cannon"sv,
+		"castle_cannon"sv,
+		"urban_equestrian"sv,
+		"smith"sv,
+		"castle_smith"sv,
+		"port"sv,
+		"castle_port"sv,
+		"sea_trade"sv,
+		"admiralty"sv,
+		"market"sv,
+		"hinterland_roads"sv,
+		"hinterland_castle_roads"sv,
+		"hinterland_farms"sv,
+		"hinterland_mines"sv,
+		"hinterland_castle_mines"sv,
+		"health"sv,
+		"hospital"sv,
+		"academic"sv,
+		"temple_catholic"sv,
+		"temple_catholic_castle"sv,
+		"temple_orthodox"sv,
+		"temple_orthodox_castle"sv,
+		"temple_muslim"sv,
+		"temple_muslim_castle"sv,
+		"taverns"sv,
+		"city_hall"sv,
+		"art"sv,
+		"bullring"sv,
+		"bank"sv,
+		"paper"sv,
+		"icon_art"sv,
+		"music"sv,
+		"tourney"sv,
+		"castle_academic"sv,
+		"caravan"sv,
+		"guild_assassins_guild"sv,
+		"guild_assassins_muslim_guild"sv,
+		"guild_masons_guild"sv,
+		"guild_theologians_guild"sv,
+		"guild_merchants_guild"sv,
+		"guild_alchemists_guild"sv,
+		"guild_thiefs_guild"sv,
+		"guild_explorers_guild"sv,
+		"guild_swordsmiths_guild"sv,
+		"templars_chapter_house"sv,
+		"st_johns_chapter_house"sv,
+		"guild_teutonic_knights_chapter_house"sv,
+		"guild_knights_of_santiago_chapter_house"sv,
+		"guild_woodsmens_guild"sv,
+		"guild_horse_breeders_guild"sv,
+		"convert_to_castle"sv,
+		"convert_to_city"sv,
+		"temple_pagan"sv,
+	};
+
+	Gadget::Dictionary<string, string> rgszTranslations{}, rgszOutput{};
+
+	if (auto f = _wfopen(ExportBuilding.c_str(), L"rb"); f)
+	{
+		static constexpr auto fn = [](tuple<char16_t const*, size_t, char16_t const*, size_t> tpl) noexcept
+		{
+			auto&& [pKey, iKey, pVal, iVal] = tpl;
+
+			return pair{
+				ToUTF8({reinterpret_cast<wchar_t const*>(pKey), iKey}),
+				ToUTF8({reinterpret_cast<wchar_t const*>(pVal), iVal}),
+			};
+		};
+
+		for (auto&& [szKey, szValue] :
+			StringsBin::Deserialize(f)
+			| std::views::transform(fn)
+			)
+		{
+			auto&& [it, bEmplaced] = rgszTranslations.try_emplace(szKey, szValue);
+
+			if (!bEmplaced)
+				fmt::print(Gadget::Warning, "[Warning] Duplicated key '{}'. Kept value: '{}', discard value: '{}'\n", szKey, it->second, szValue);
+		}
+
+		fclose(f);
+	}
+
+	auto UnclassifiedTranslations{ rgszTranslations };
+	auto const rgszKeys =
+		rgszTranslations
+		| std::views::keys
+		| std::views::transform([](auto&& obj) noexcept -> string_view { return string_view{ obj }; })
+		| std::ranges::to<set>();
+
+	// Step 1: add all names of building tree into output.
+	auto iErased = 0;
+	for (auto&& key :
+		rgszBuildingChainNames
+		| std::views::transform([](auto&& sz) noexcept { return fmt::format("{}_name", sz); })
+		)
+	{
+		if (!rgszTranslations.contains(key))
+		{
+			fmt::print(Gadget::Warning, "[Warning] Building tree '{}' no found in current translation.\n", key);
+			continue;
+		}
+
+		rgszOutput.try_emplace(key, rgszTranslations.at(key));
+		UnclassifiedTranslations.erase(key);
+		++iErased;
+	}
+
+	fmt::print("[Message] {} building tree names eliminated.\n", iErased);
+
+	// Step 2: Generate output data.
+	for (auto&& sz : rgszKeys)
+	{
+		auto const szBuildingRootName = string{ sz };
+		auto const szBuildingDefDesc = szBuildingRootName + "_desc";
+		auto const szBuildingDefShort = szBuildingDefDesc + "_short";
+
+		auto const Entries =
+			rgszKeys
+			| std::views::filter(std::bind_back<bool(*)(string_view, string_view)>(&::StartsWith_I, sz))
+			| std::ranges::to<set>();
+
+		if (Entries.size() <= 3)
+			continue;
+
+		fmt::print("[Message] Word '{}' has leading {} entries.\n", sz, Entries.size());
+
+		static constexpr auto fnIsPlaceholder = [](const string& sz) noexcept -> bool
+		{
+			return (sz.contains("NOT") || sz.contains("WARNING") || sz.contains("placeholder"));
+		};
+
+		// Step 2-1: gather frequency of the descriptions.
+		auto fnAdd = [&](string const& szKey, string_view const& szCulture, auto&& rgszSet) noexcept -> bool
+		{
+			// no translation, no handling.
+			if (!rgszTranslations.contains(szKey))
+				return false;
+
+			auto const& szTranslation = rgszTranslations.at(szKey);	
+			UnclassifiedTranslations.erase(szKey);
+
+			// same text, placeholder then.
+			if (szKey == szTranslation)
+				return false;
+
+			// placeholder...
+			if (fnIsPlaceholder(szTranslation))
+				return false;
+
+			rgszSet[szTranslation].emplace(szCulture);
+			return true;
+		};
+
+		Gadget::Dictionary<
+			string_view,	// desc/translation text
+			Gadget::Set<string_view>	// culture using that text.
+		> rgszBuildingNames{}, rgszBuildingDesc{}, rgszBuildingShort{};
+
+		for (auto&& szCul : rgszCultures)
+		{
+			auto const szName = fmt::format("{}{}", sz, szCul);
+			auto const szDesc = szName + "_desc";
+			auto const szShort = szDesc + "_short";
+
+			fnAdd(szName, szCul, rgszBuildingNames);
+			fnAdd(szDesc, szCul, rgszBuildingDesc);
+			fnAdd(szShort, szCul, rgszBuildingShort);
+		}
+
+		fmt::print(Gadget::Info,
+			"\tPossible translations: name: {}\n"
+			"\t                       desc: {}\n"
+			"\t                       shor: {}\n",
+			rgszBuildingNames | std::views::keys,
+			rgszBuildingDesc | std::views::keys,
+			rgszBuildingShort | std::views::keys
+		);
+
+		if (rgszBuildingNames.size() > 1)
+			fmt::print(Gadget::Warning, "\t[Warning] {} possible translation in name of {}.\n", rgszBuildingNames.size(), sz);
+		if (rgszBuildingDesc.size() > 1)
+			fmt::print(Gadget::Warning, "\t[Warning] {} possible translation in desc of {}.\n", rgszBuildingDesc.size(), sz);
+		if (rgszBuildingShort.size() > 1)
+			fmt::print(Gadget::Warning, "\t[Warning] {} possible translation in short desc of {}.\n", rgszBuildingShort.size(), sz);
+
+		// Step 2-2: Decides who becomes default.
+		auto fnFindDefault = [&](decltype(rgszBuildingNames) const& rgszSet, string_view hint, string const& def_entry_key, string_view entry_key_ext) noexcept
+		{
+			switch (rgszSet.size())
+			{
+			case 0:
+				fmt::print(Gadget::Error, "\t[Error] Empty {} set!\n", hint);
+				break;
+
+			case 1:
+				rgszOutput.try_emplace(def_entry_key, rgszSet.begin()->first);
+				fmt::print(Gadget::Progress, "\t[Message] Only one candidate for {} set.\n", hint);
+				break;
+
+			default:
+				auto const itDefault = std::ranges::max_element(
+					rgszSet,
+					{},
+					[](auto&& elem) noexcept { return elem.second.size(); }	// the more culture using this text the better.
+				);
+
+				rgszOutput.try_emplace(def_entry_key, itDefault->first);
+				fmt::print(Gadget::Progress, "\t[Message] Candidate used by {} cultures won in {} set.\n", itDefault->second.size(), hint);
+
+				for (auto it = rgszSet.begin(); it != rgszSet.end(); ++it)
+				{
+					if (it == itDefault)
+						continue;
+
+					for (auto&& cul : it->second)
+					{
+						rgszOutput.try_emplace(
+							fmt::format("{}{}{}", sz, cul, entry_key_ext),
+							it->first
+						);
+
+						fmt::print(Gadget::Progress, "\t[Message] Inserting entry '{}{}{}' as side.\n", sz, cul, entry_key_ext);
+					}
+				}
+				break;
+			}
+		};
+
+		fnFindDefault(rgszBuildingNames, "name", szBuildingRootName, "");
+		fnFindDefault(rgszBuildingDesc, "desc", szBuildingDefDesc, "_desc");
+		fnFindDefault(rgszBuildingShort, "short", szBuildingDefShort, "_desc_short");
+	}
+
+	// Step 3: Output
+	auto const OutputTextFile = ExportBuilding.parent_path() / L"export_buildings.txt";
+	StringsBin::Serialize(OutputTextFile, rgszOutput);
+
+	auto const DiscardFile = ExportBuilding.parent_path() / L"export_buildings_discard.txt";
+	StringsBin::Serialize(DiscardFile, UnclassifiedTranslations);
 }

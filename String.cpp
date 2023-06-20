@@ -12,7 +12,15 @@ using namespace std;
 using namespace std::experimental;
 using namespace std::literals;
 
-bool wcsieql(std::wstring_view lhs, std::wstring_view rhs) noexcept
+bool strieql(string_view lhs, string_view rhs) noexcept
+{
+	return std::ranges::equal(
+		lhs, rhs,
+		[](char lc, char rc) noexcept -> bool { return ToUpper(lc) == ToUpper(rc); }
+	);
+}
+
+bool wcsieql(wstring_view lhs, wstring_view rhs) noexcept
 {
 	return std::ranges::equal(
 		lhs, rhs,
@@ -20,12 +28,38 @@ bool wcsieql(std::wstring_view lhs, std::wstring_view rhs) noexcept
 	);
 }
 
-bool strieql(string_view lhs, string_view rhs) noexcept
+bool StartsWith_I(string_view text, string_view what) noexcept
 {
-	return std::ranges::equal(
-		lhs, rhs,
-		[](char lc, char rc) noexcept -> bool { return ToUpper(lc) == ToUpper(rc); }
-	);
+	if (what.length() > text.length())
+		return false;
+
+	for (auto&& [lc, rc] : std::views::zip(text, what))
+	{
+		auto const lci = ToLower(lc);
+		auto const rci = ToLower(rc);
+
+		if (lci != rci)
+			return false;
+	}
+
+	return true;
+}
+
+bool StartsWith_I(wstring_view text, wstring_view what) noexcept
+{
+	if (what.length() > text.length())
+		return false;
+
+	for (auto&& [lc, rc] : std::views::zip(text, what))
+	{
+		auto const lci = ToWLower(lc);
+		auto const rci = ToWLower(rc);
+
+		if (lci != rci)
+			return false;
+	}
+
+	return true;
 }
 
 generator<string_view> UTIL_Split(string_view sz, string_view delimiters, bool bLTrim) noexcept
