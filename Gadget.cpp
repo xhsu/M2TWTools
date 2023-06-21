@@ -37,6 +37,33 @@ namespace Gadget
 }
 
 
+__forceinline void CopyFiles(std::ranges::input_range auto&& files, fs::path const& SourceFolder, fs::path const& DestFolder) noexcept
+{
+	for (auto&& file : files)
+	{
+		auto const from = SourceFolder / file;
+		auto const to = DestFolder / file;
+
+		if (fs::exists(to))
+		{
+			fmt::print(Gadget::Info, "[Message] Skipping existing file: {}\n", to);
+			continue;
+		}
+
+		if (fs::exists(from))
+		{
+			std::error_code ec{};
+			fs::create_directories(to.parent_path());
+			fs::copy(from, to, fs::copy_options::recursive | fs::copy_options::skip_existing, ec);
+
+			if (ec)
+				fmt::print(Gadget::Error, "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
+		}
+		else
+			fmt::print(Gadget::Error, "[Error] FILE no found: {}\n", from.u8string());
+	}
+}
+
 void ReadAllCommand(const char* pszPath = R"(C:\Users\xujia\Downloads\EBII_noninstaller\mods\ebii\data\export_descr_buildings.txt)") noexcept
 {
 	if (auto f = fopen(pszPath, "rb"))
@@ -301,27 +328,23 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 	}
 }
 
-void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, string_view const* pArrayOfUnitNames, size_t len) noexcept
+inline void CopyBattleModel(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszModels) noexcept
 {
 	using namespace BattleModels;
 
-	CFile DestinationModelDB(pszModelDbTo);
-	CFile const SourceModelDB(pszModelDbFrom);
+	fs::path const SourceUnitModelsFolder = SourceData / L"unit_models";
+	fs::path const DestinationUnitModelsFolder = DestData / L"unit_models";
 
-	fs::path const SourceUnitModelsFolder = fs::path{ pszModelDbFrom }.parent_path();
-	fs::path const SourceDataFolder = SourceUnitModelsFolder.parent_path();
+	CFile const SourceModelDB(SourceUnitModelsFolder / L"battle_models.modeldb");
+	CFile DestinationModelDB(DestinationUnitModelsFolder / L"battle_models.modeldb");
 
-	fs::path const DestinationUnitModelsFolder = fs::path{ pszModelDbTo }.parent_path();
-	fs::path const DestinationDataFolder = DestinationUnitModelsFolder.parent_path();
-
-	span const rgszUnits{ pArrayOfUnitNames, len };
 	set<fs::path> files{};
 
 	auto fnContains = [&](auto&& Model) noexcept -> bool
 	{
-		for (auto&& szUnitName : rgszUnits)
+		for (auto&& szModel : rgszModels)
 		{
-			if (strieql(Model.m_szName, szUnitName))
+			if (strieql(Model.m_szName, szModel))
 				return true;
 		}
 
@@ -333,30 +356,30 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 		return !DestinationModelDB.m_rgBattleModels.contains(Model.m_szName);
 	};
 
-	for (auto&& szUnit : rgszUnits)
+	for (auto&& szModel : rgszModels)
 	{
-		if (!SourceModelDB.m_rgBattleModels.contains(szUnit))
+		if (!SourceModelDB.m_rgBattleModels.contains(szModel))
 		{
-			fmt::print(Gadget::Error, "[Error] Model def '{}' no found from source file!\n", szUnit);
+			fmt::print(Gadget::Error, "[Error] Model def '{}' no found from source file!\n", szModel);
 			continue;
 		}
-		else if (DestinationModelDB.m_rgBattleModels.contains(szUnit))
+		else if (DestinationModelDB.m_rgBattleModels.contains(szModel))
 		{
-			fmt::print(Gadget::Warning, "[Warning] Model def '{}' already exists in dest file!\n", szUnit);
+			fmt::print(Gadget::Warning, "[Warning] Model def '{}' already exists in dest file!\n", szModel);
 			continue;
 		}
 
-		auto&& Model = SourceModelDB.m_rgBattleModels.at(szUnit);
+		auto&& Model = SourceModelDB.m_rgBattleModels.at(szModel);
 
-		fmt::print(Gadget::Info, "[Message] Model def '{}' inserted.\n", szUnit);
+		fmt::print(Gadget::Progress, "[Message] Model def '{}' inserted.\n", szModel);
 
-		DestinationModelDB.m_rgBattleModels.try_emplace(szUnit, Model);
-		files.insert_range(Model.ListOfFiles(SourceDataFolder));
+		DestinationModelDB.m_rgBattleModels.try_emplace(szModel, Model);
+		files.insert_range(Model.ListOfFiles(SourceData));
 	}
 
 	for (auto&& file : files)
 	{
-		fs::path const to = DestinationDataFolder / fs::relative(file, SourceDataFolder);
+		fs::path const to = DestData / fs::relative(file, SourceData);
 
 		if (fs::exists(to))
 		{
@@ -377,25 +400,26 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 			fmt::print(Gadget::Error, "[Error] FILE no found: {}\n", file.u8string());
 	}
 
-	DestinationModelDB.Save(pszModelDbTo);
+	DestinationModelDB.Save(DestinationUnitModelsFolder / L"battle_models.modeldb");
 }
 
-void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* pArrayOfUnitNames, size_t len) noexcept
+inline void CopyUnitVoices(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszUnits) noexcept
 {
 	using namespace UnitsVoice;
 
-	CUnitVoices mymod{ pszTo };
-	CUnitVoices crus{ pszFrom };
+	fs::path const SourceFile{ SourceData / L"export_descr_sounds_units_voice.txt" };
+	fs::path const DestFile{ DestData / L"export_descr_sounds_units_voice.txt" };
 
-	span rgszUnits{ pArrayOfUnitNames, len };
+	CUnitVoices SourceUnitVoice{ SourceFile };
+	CUnitVoices DestUnitVoice{ DestFile };
 
 	for (auto&& szUnit : rgszUnits)
 	{
-		for (auto&& [pAcc, pClass, pVoc, pEv] : crus.EveryUnitOf(szUnit))
+		for (auto&& [pAcc, pClass, pVoc, pEv] : SourceUnitVoice.EveryUnitOf(szUnit))
 		{
 			fmt::println("[Info] Event: {}/{}/{}/unit {}", pAcc->m_Name, pClass->m_Name, pVoc->m_Name, szUnit);
 
-			if (auto p = mymod.At(pAcc->m_Name, pClass->m_Name, pVoc->m_Name); p != nullptr)
+			if (auto p = DestUnitVoice.At(pAcc->m_Name, pClass->m_Name, pVoc->m_Name); p != nullptr)
 			{
 				//auto const bExisted = std::ranges::fold_left(
 				//	p->m_Events
@@ -425,15 +449,12 @@ void CopyUnitVoices(const char* pszFrom, const char* pszTo, string_view const* p
 		}
 	}
 
-	mymod.Save(pszTo);
+	DestUnitVoice.Save(DestFile);
 }
 
-set<string, CaseIgnoredLess> FindModelEntriesOfUnits(const char* EDU, string_view const* it, size_t len) noexcept
+inline Gadget::Set<string> FindModelEntriesOfUnits(Units::CFile const& DescrUnits, std::ranges::input_range auto&& rgszUnits) noexcept
 {
-	auto DescrUnits = Units::Deserialize(EDU);
-	span rgszUnits{ it, len };
-
-	set<string, CaseIgnoredLess> ret{};
+	Gadget::Set<string> ret{};
 
 	for (auto&& szUnit : rgszUnits)
 	{
@@ -446,7 +467,7 @@ set<string, CaseIgnoredLess> FindModelEntriesOfUnits(const char* EDU, string_vie
 
 		if (pUnit == DescrUnits.end())
 		{
-			fmt::print(Gadget::Error, "[Error] Unit '{}' cannot be found in '{}'.\n", szUnit, EDU);
+			fmt::print(Gadget::Error, "[Error] Unit '{}' cannot be found in 'export_descr_unit.txt'.\n", szUnit);
 			continue;
 		}
 
@@ -457,14 +478,13 @@ set<string, CaseIgnoredLess> FindModelEntriesOfUnits(const char* EDU, string_vie
 	return ret;
 }
 
-void CopyUnitUIFiles(fs::path const& szSourceData, fs::path const& szDestData, string_view const* itUnitDictionaryEntry, size_t len) noexcept
+inline void CopyUnitUIFiles(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszUnitDictionaryEntries) noexcept
 {
-	span rgszUnits{ itUnitDictionaryEntry, len };
 	set<fs::path> SourceFiles{};
 
-	for (auto&& Entry : fs::recursive_directory_iterator(szSourceData / "UI"))
+	for (auto&& Entry : fs::recursive_directory_iterator(SourceData / "UI"))
 	{
-		for (auto&& szDic : rgszUnits)
+		for (auto&& szDic : rgszUnitDictionaryEntries)
 		{
 			if (fs::path Path{ Entry }; std::ranges::contains_subrange(
 				Path.filename().u8string(),
@@ -474,45 +494,22 @@ void CopyUnitUIFiles(fs::path const& szSourceData, fs::path const& szDestData, s
 				ToLower
 			))
 			{
+				Path = fs::relative(Path, SourceData);
 				SourceFiles.emplace(std::move(Path));
 			}
 		}
 	}
 
-	for (auto&& file : SourceFiles)
-	{
-		auto& from = file;
-		auto const to = szDestData / fs::relative(from, szSourceData);
-
-		if (fs::exists(to))
-		{
-			fmt::print(Gadget::Info, "[Message] Skipping existing file: {}\n", to);
-			continue;
-		}
-
-		if (fs::exists(from))
-		{
-			std::error_code ec{};
-			fs::create_directories(to.parent_path());
-			fs::copy(from, to, fs::copy_options::recursive | fs::copy_options::skip_existing, ec);
-
-			if (ec)
-				fmt::print(Gadget::Error, "[Error] std::error_code '{}': {}\n", ec.value(), ec.message());
-		}
-		else
-			fmt::print(Gadget::Error, "[Error] FILE no found: {}\n", from.u8string());
-	}
+	CopyFiles(SourceFiles, SourceData, DestData);
 }
 
-void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, string_view const* itUnitDictionaryEntry, size_t len) noexcept
+inline void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszUnitDictionaryEntries) noexcept
 {
 	auto const from = SourceData / L"text" / L"export_units.txt.strings.bin";
 	auto const to = DestData / L"text" / L"export_units.txt.strings.bin";
 	auto const to_txt = DestData / L"text" / L"export_units.txt";
 
-	span rgszUnits{ itUnitDictionaryEntry, len };
-
-	map<string, string, CaseIgnoredLess> rgszDest{};
+	Gadget::Dictionary<string, string> rgszDest{};
 	if (auto f = _wfopen(to.c_str(), L"rb"); f)
 	{
 		for (auto&& [pszKey, iKeyLen, pszValue, iValueLen] : StringsBin::Deserialize(f))
@@ -538,7 +535,7 @@ void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, st
 			);
 		}
 
-		for (auto&& szUnitDic : rgszUnits)
+		for (auto&& szUnitDic : rgszUnitDictionaryEntries)
 		{
 			array<string, 3> const rgszEntries =
 			{
@@ -580,34 +577,10 @@ void CopyUnitEssentialFiles(fs::path const& SourceData, fs::path const& DestData
 	if (rgszUnits.size() != rgszDictionaryEntries.size())
 		fmt::print(Gadget::Warning, "[Warning] Some entries from your input cannot be found in EDU!\n");
 
-	CopyUnitUIFiles(SourceData, DestData, rgszDictionaryEntries.data(), rgszDictionaryEntries.size());
-	CopyUnitStringsBin(SourceData, DestData, rgszDictionaryEntries.data(), rgszDictionaryEntries.size());
-
-	{
-		auto const ModelDbFrom = SourceData / L"unit_models" / L"battle_models.modeldb";
-		auto const ModelDbTo = DestData / L"unit_models" / L"battle_models.modeldb";
-		auto const ret = FindModelEntriesOfUnits(EDUPath.u8string().c_str(), itUnitNames, len);
-		auto const ModelEntries = ret | std::views::transform([](auto&& obj) noexcept -> string_view { return obj; }) | std::ranges::to<vector>();
-
-		CopyBattleModel(
-			ModelDbFrom.u8string().c_str(),
-			ModelDbTo.u8string().c_str(),
-			ModelEntries.data(),
-			ModelEntries.size()
-		);
-	}
-
-	{
-		auto const UnitVoiceFrom = SourceData / L"export_descr_sounds_units_voice.txt";
-		auto const UnitVoiceTo = DestData / L"export_descr_sounds_units_voice.txt";
-
-		CopyUnitVoices(
-			UnitVoiceFrom.u8string().c_str(),
-			UnitVoiceTo.u8string().c_str(),
-			itUnitNames,
-			len
-		);
-	}
+	CopyBattleModel(SourceData, DestData, FindModelEntriesOfUnits(EDUFile, rgszUnits));
+	CopyUnitStringsBin(SourceData, DestData, rgszDictionaryEntries);
+	CopyUnitUIFiles(SourceData, DestData, rgszDictionaryEntries);
+	CopyUnitVoices(SourceData, DestData, rgszUnits);
 }
 
 void SimplifyBuildingLocale(fs::path const& ExportBuilding) noexcept

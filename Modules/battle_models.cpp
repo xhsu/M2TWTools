@@ -330,9 +330,9 @@ bool BattleModels::CFile::Sanity(void) const noexcept	// #UNDONE
 	return true;
 }
 
-void BattleModels::CFile::Save(const char* pszFilePath) const noexcept
+void BattleModels::CFile::Save(fs::path const& Path) const noexcept
 {
-	auto f = fopen(pszFilePath, "wb");
+	auto f = _wfopen(Path.c_str(), L"wb");
 	if (!f)
 		return;
 

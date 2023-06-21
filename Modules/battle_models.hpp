@@ -15,6 +15,8 @@
 
 namespace BattleModels
 {
+	namespace fs = std::filesystem;
+
 	using std::array;
 	using std::pair;
 	using std::set;
@@ -82,6 +84,7 @@ namespace BattleModels
 		Dictionary<string_view, CBattleModel> m_rgBattleModels{};
 
 		explicit CFile(const char* pszFilePath = "battle_models.modeldb") noexcept : CBaseParser{ pszFilePath } { Initialize(); }
+		explicit CFile(fs::path const& Path) noexcept : CBaseParser{ Path } { Initialize(); }
 
 		CFile(CFile const&) noexcept = delete;
 		CFile(CFile&&) noexcept = delete;
@@ -91,7 +94,7 @@ namespace BattleModels
 
 		void Initialize(void) noexcept;
 		bool Sanity(void) const noexcept;	// #UNDONE
-		void Save(const char* pszFilePath = "battle_models.modeldb") const noexcept;
+		void Save(fs::path const& Path) const noexcept;
 		size_t Count(void) const noexcept;
 	};
 }
