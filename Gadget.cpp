@@ -134,8 +134,36 @@ vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, string_view szFa
 {
 	using namespace Units;
 
+	// #TODO reading from descr_sm_faction?
+	static const Gadget::Dictionary<string_view, string_view> CultureOf{
+		{"antioch"sv,		"northern_european"sv},
+		{"byzantium"sv,		"greek"sv},
+		{"denmark"sv,		"northern_european"sv},
+		{"egypt"sv,			"middle_eastern"sv},
+		{"england"sv,		"northern_european"sv},
+		{"france"sv,		"northern_european"sv},
+		{"hre"sv,			"northern_european"sv},
+		{"hungary"sv,		"eastern_european"sv},
+		{"jerusalem"sv,		"northern_european"sv},
+		{"milan"sv,			"southern_european"sv},
+		{"mongols"sv,		"middle_eastern"sv},
+		{"moors"sv,			"middle_eastern"sv},
+		{"norway"sv,		"northern_european"sv},
+		{"papal_states"sv,	"southern_european"sv},
+		{"poland"sv,		"eastern_european"sv},
+		{"portugal"sv,		"southern_european"sv},
+		{"russia"sv,		"eastern_european"sv},
+		{"scotland"sv,		"northern_european"sv},
+		{"sicily"sv,		"southern_european"sv},
+		{"slave"sv,			"southern_european"sv},
+		{"spain"sv,			"southern_european"sv},
+		{"timurids"sv,		"middle_eastern"sv},
+		{"turks"sv,			"middle_eastern"sv},
+		{"venice"sv,		"southern_european"sv},
+	};
+
 	return edu
-		| std::views::filter([&](CUnit const& unit) noexcept { return std::ranges::contains(unit.at("ownership"), szFaction); })
+		| std::views::filter([&](CUnit const& unit) noexcept { return std::ranges::contains(unit.at("ownership"), szFaction) || std::ranges::contains(unit.at("ownership"), CultureOf.at(szFaction)); })
 //		| std::views::filter([&](CUnit const& unit) noexcept { return !std::ranges::contains(unit.at("attributes"), "mercenary_unit"); })
 		| std::views::transform([](CUnit const& unit) noexcept -> CUnit const* { return &unit; })
 		| std::ranges::to<vector>();
@@ -202,6 +230,13 @@ void ListFactionUnitPriority(fs::path const& edu, string_view szFaction) noexcep
 	}
 }
 
+vector<string_view> ToDictionaryNames(vector<Units::CUnit const*> const& Roaster) noexcept
+{
+	return Roaster
+		| std::views::transform([](auto&& p) noexcept -> string_view { return string_view{ p->at("dictionary").front() }; })
+		| std::ranges::to<vector>();
+}
+
 set<string> ExtractFactions(set<Units::CUnit const*> const& Roaster) noexcept
 {
 	set<string> ret{};
@@ -234,18 +269,15 @@ set<string> AssembleUnitUIFiles(fs::path const& DataPath, string_view szDic) noe
 	return ret;
 }
 
-void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, string_view szFaction) noexcept
+void CopyBattleModel(fs::path const& SourceData, fs::path const& DestData, string_view szFaction) noexcept
 {
 	using namespace BattleModels;
 
-	CFile DestinationModelDB(pszModelDbTo);
-	CFile SourceModelDB(pszModelDbFrom);
+	fs::path const SourceUnitModelsFolder = SourceData / L"unit_models";
+	fs::path const DestinationUnitModelsFolder = DestData / L"unit_models";
 
-	fs::path const SourceUnitModelsFolder = fs::path{ pszModelDbFrom }.parent_path();
-	fs::path const SourceDataFolder = SourceUnitModelsFolder.parent_path();
-
-	fs::path const DestinationUnitModelsFolder = fs::path{ pszModelDbTo }.parent_path();
-	fs::path const DestinationDataFolder = DestinationUnitModelsFolder.parent_path();
+	CFile const SourceModelDB(SourceUnitModelsFolder / L"battle_models.modeldb");
+	CFile DestinationModelDB(DestinationUnitModelsFolder / L"battle_models.modeldb");
 
 	auto ModelsToCopy = SourceModelDB.m_rgBattleModels
 		| std::views::values
@@ -260,7 +292,7 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 	// Patching battle_models file.
 	for (auto&& Model : DestinationModelDB.m_rgBattleModels | std::views::values)
 	{
-		auto const it = std::ranges::find(ModelsToCopy, Model.m_szName, [](CBattleModel* p) noexcept { return p->m_szName; });
+		auto const it = std::ranges::find(ModelsToCopy, Model.m_szName, [](auto&& p) noexcept { return p->m_szName; });
 
 		// model name is not in list.
 		if (it == ModelsToCopy.end())
@@ -270,19 +302,19 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 
 		if (Source->m_UnitTex.contains(szFaction))
 		{
-			Model.m_UnitTex.try_emplace(szFaction, Source->m_UnitTex[szFaction]);
-			files.insert_range(Source->m_UnitTex[szFaction].ListOfFiles(SourceDataFolder));
-			fmt::print("Patched unit tex ");
+			Model.m_UnitTex.try_emplace(szFaction, Source->m_UnitTex.at(szFaction));
+			files.insert_range(Source->m_UnitTex.at(szFaction).ListOfFiles(SourceData));
+			fmt::print(Gadget::Progress, "Patched unit tex ");
 		}
 
 		if (Source->m_AttachmentTex.contains(szFaction))
 		{
-			Model.m_AttachmentTex.try_emplace(szFaction, Source->m_AttachmentTex[szFaction]);
-			files.insert_range(Source->m_AttachmentTex[szFaction].ListOfFiles(SourceDataFolder));
-			fmt::print("and attachment tex ");
+			Model.m_AttachmentTex.try_emplace(szFaction, Source->m_AttachmentTex.at(szFaction));
+			files.insert_range(Source->m_AttachmentTex.at(szFaction).ListOfFiles(SourceData));
+			fmt::print(Gadget::Progress, "and attachment tex ");
 		}
 
-		fmt::print("into <{}>.\n", Source->m_szName);
+		fmt::print(Gadget::Progress, "into <{}>.\n", Source->m_szName);
 		ModelsToCopy.erase(it);
 	}
 
@@ -298,15 +330,15 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 		for (auto&& pModel : ModelsToCopy)
 		{
 			DestinationModelDB.m_rgBattleModels.try_emplace(pModel->m_szName, *pModel);
-			files.insert_range(pModel->ListOfFiles(SourceDataFolder));
+			files.insert_range(pModel->ListOfFiles(SourceData));
 		}
 	}
 
-	DestinationModelDB.Save(pszModelDbTo);
+	DestinationModelDB.Save(DestinationUnitModelsFolder / L"battle_models.modeldb");
 
 	for (auto&& file : files)
 	{
-		fs::path const to = DestinationDataFolder / fs::relative(file, SourceDataFolder);
+		fs::path const to = DestData / fs::relative(file, SourceData);
 
 		if (fs::exists(to))
 		{
@@ -328,7 +360,7 @@ void CopyBattleModel(const char* pszModelDbFrom, const char* pszModelDbTo, strin
 	}
 }
 
-inline void CopyBattleModel(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszModels) noexcept
+inline void CopyBattleModel(fs::path const& SourceData, fs::path const& DestData, RangeOfStr auto&& rgszModels) noexcept
 {
 	using namespace BattleModels;
 
@@ -403,7 +435,7 @@ inline void CopyBattleModel(fs::path const& SourceData, fs::path const& DestData
 	DestinationModelDB.Save(DestinationUnitModelsFolder / L"battle_models.modeldb");
 }
 
-inline void CopyUnitVoices(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszUnits) noexcept
+inline void CopyUnitVoices(fs::path const& SourceData, fs::path const& DestData, RangeOfStr auto&& rgszUnits) noexcept
 {
 	using namespace UnitsVoice;
 
@@ -452,7 +484,7 @@ inline void CopyUnitVoices(fs::path const& SourceData, fs::path const& DestData,
 	DestUnitVoice.Save(DestFile);
 }
 
-inline Gadget::Set<string> FindModelEntriesOfUnits(Units::CFile const& DescrUnits, std::ranges::input_range auto&& rgszUnits) noexcept
+inline Gadget::Set<string> FindModelEntriesOfUnits(Units::CFile const& DescrUnits, RangeOfStr auto&& rgszUnits) noexcept
 {
 	Gadget::Set<string> ret{};
 
@@ -478,7 +510,7 @@ inline Gadget::Set<string> FindModelEntriesOfUnits(Units::CFile const& DescrUnit
 	return ret;
 }
 
-inline void CopyUnitUIFiles(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszUnitDictionaryEntries) noexcept
+inline void CopyUnitUIFiles(fs::path const& SourceData, fs::path const& DestData, RangeOfStr auto&& rgszUnitDictionaryEntries) noexcept
 {
 	set<fs::path> SourceFiles{};
 
@@ -503,7 +535,7 @@ inline void CopyUnitUIFiles(fs::path const& SourceData, fs::path const& DestData
 	CopyFiles(SourceFiles, SourceData, DestData);
 }
 
-inline void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, std::ranges::input_range auto&& rgszUnitDictionaryEntries) noexcept
+inline void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestData, RangeOfStr auto&& rgszUnitDictionaryEntries) noexcept
 {
 	auto const from = SourceData / L"text" / L"export_units.txt.strings.bin";
 	auto const to = DestData / L"text" / L"export_units.txt.strings.bin";
@@ -547,7 +579,7 @@ inline void CopyUnitStringsBin(fs::path const& SourceData, fs::path const& DestD
 			for (auto&& szEntry : rgszEntries)
 			{
 				if (rgszDest.contains(szEntry))
-					fmt::print(Gadget::Warning, "[Warning] Entry '{}' already exist in dest file.", szEntry);
+					fmt::print(Gadget::Warning, "[Warning] Entry '{}' already exist in dest file.\n", szEntry);
 				else if (rgszTranslations.contains(szEntry))
 					rgszDest.try_emplace(szEntry, rgszTranslations[szEntry]);
 				else
@@ -854,4 +886,45 @@ void SimplifyBuildingLocale(fs::path const& ExportBuilding) noexcept
 
 	auto const DiscardFile = ExportBuilding.parent_path() / L"export_buildings_discard.txt";
 	StringsBin::Serialize(DiscardFile, UnclassifiedTranslations);
+}
+
+void Method(fs::path const& SourceData, fs::path const& DestData) noexcept
+{
+	auto const EDUPath = SourceData / L"export_descr_unit.txt";
+	auto const EDUFile = Units::Deserialize(EDUPath.u8string().c_str());
+
+	auto AntiochRoaster = GetRoaster(EDUFile, "antioch");
+	auto JerusalemRoaster = GetRoaster(EDUFile, "jerusalem");
+
+	//CopyBattleModel(SourceData, DestData, "antioch");
+	CopyBattleModel(SourceData, DestData, "jerusalem");
+
+	//Gadget::Set<string_view> JoinedDictionaryEntries{};
+	//JoinedDictionaryEntries.insert_range(ToDictionaryNames(AntiochRoaster));
+	//JoinedDictionaryEntries.insert_range(ToDictionaryNames(JerusalemRoaster));
+
+	//CopyUnitStringsBin(SourceData, DestData, JoinedDictionaryEntries);
+
+	//{
+	//	using namespace UnitsVoice;
+
+	//	fs::path const SourceFile{ SourceData / L"export_descr_sounds_units_voice.txt" };
+	//	fs::path const DestFile{ DestData / L"export_descr_sounds_units_voice.txt" };
+
+	//	CUnitVoices SourceUnitVoice{ SourceFile };
+	//	CUnitVoices DestUnitVoice{ DestFile };
+
+	//	auto&& [itAntioch, bAntioch] = DestUnitVoice.m_Accents.try_emplace("Antioch", SourceUnitVoice.m_Accents.at("Antioch"));
+	//	auto&& [itJerusalem, bJerusalem] = DestUnitVoice.m_Accents.try_emplace("Jerusalem", SourceUnitVoice.m_Accents.at("Jerusalem"));
+
+	//	if (!bAntioch)
+	//		fmt::print(Gadget::Warning, "[Warning] Accent entry 'Antioch' already existed!\n");
+
+	//	if (!bJerusalem)
+	//		fmt::print(Gadget::Warning, "[Warning] Accent entry 'Jerusalem' already existed!\n");
+
+	//	DestUnitVoice.Save(DestFile);
+	//}
+
+	//CopyUnitUIFiles(SourceData, DestData, JoinedDictionaryEntries);
 }

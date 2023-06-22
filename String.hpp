@@ -4,6 +4,9 @@
 #include <filesystem>
 #include <string_view>
 
+template <typename T>
+concept RangeOfStr = std::ranges::input_range<T> && std::convertible_to<std::ranges::range_value_t<T>, ::std::string_view>;
+
 inline constexpr bool IsSpace(char const c) noexcept
 {
 	if (c & 0b10000000)
