@@ -4,7 +4,7 @@
 
 #include <map>	// #UPDATE_AT_CPP23 flat_map
 
-namespace UnitsVoice
+namespace Voice::Units
 {
 	namespace fs = std::filesystem;
 

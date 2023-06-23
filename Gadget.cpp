@@ -3,12 +3,14 @@
 
 #include <assert.h>
 
-#include <experimental/generator>
 #include <functional>
 #include <ranges>
-#include <span>
 
 #include "Modules/battle_models.hpp"
+#include "Modules/export_descr_sounds_prebattle.hpp"
+#include "Modules/export_descr_sounds_soldier_voice.hpp"
+#include "Modules/export_descr_sounds_stratmap_voice.hpp"
+#include "Modules/export_descr_sounds_units_battle_events.hpp"
 #include "Modules/export_descr_sounds_units_voice.hpp"
 #include "Modules/export_descr_unit.hpp"
 
@@ -437,7 +439,7 @@ inline void CopyBattleModel(fs::path const& SourceData, fs::path const& DestData
 
 inline void CopyUnitVoices(fs::path const& SourceData, fs::path const& DestData, RangeOfStr auto&& rgszUnits) noexcept
 {
-	using namespace UnitsVoice;
+	using namespace Voice::Units;
 
 	fs::path const SourceFile{ SourceData / L"export_descr_sounds_units_voice.txt" };
 	fs::path const DestFile{ DestData / L"export_descr_sounds_units_voice.txt" };
@@ -888,43 +890,51 @@ void SimplifyBuildingLocale(fs::path const& ExportBuilding) noexcept
 	StringsBin::Serialize(DiscardFile, UnclassifiedTranslations);
 }
 
+void PortSoundFiles(fs::path const& SourceData, fs::path const& DestData, string_view Faction) noexcept
+{
+	Voice::Prebattle::CFile Source_Prebattle{SourceData / L"export_descr_sounds_prebattle.txt"};
+	Voice::Soldier::CFile Source_Soldier{SourceData / L"export_descr_sounds_soldier_voice.txt"};
+	Voice::Strat::CFile Source_Strat{SourceData / L"export_descr_sounds_stratmap_voice.txt"};
+	Voice::Battle::CFile Source_Battle{SourceData / L"export_descr_sounds_units_battle_events.txt"};
+
+	Voice::Prebattle::CFile Dest_Prebattle{DestData / L"export_descr_sounds_prebattle.txt"};
+	Voice::Soldier::CFile Dest_Soldier{DestData / L"export_descr_sounds_soldier_voice.txt"};
+	Voice::Strat::CFile Dest_Strat{DestData / L"export_descr_sounds_stratmap_voice.txt"};
+	Voice::Battle::CFile Dest_Battle{DestData / L"export_descr_sounds_units_battle_events.txt"};
+
+	auto fnInsertion = [&](auto&& Source, auto&& Dest, string_view FileName) noexcept -> bool
+	{
+		if (!Source.m_Accents.contains(Faction))
+		{
+			fmt::print(fg(fmt::color::red), "[Error] Accent '{}' does not existed in the source file '{}'\n", Faction, FileName);
+			return false;
+		}
+
+		if (auto&& [it, bNewInsertion] = Dest.m_Accents.try_emplace(Faction, Source.m_Accents.at(Faction));
+			!bNewInsertion)
+		{
+			fmt::print(fg(fmt::color::golden_rod), "[Warning] Accent '{}' already existed in the dest file '{}'\n", Faction, FileName);
+			return false;
+		}
+
+		return Dest.Save(DestData / FileName);
+	};
+
+	fnInsertion(Source_Prebattle, Dest_Prebattle, "export_descr_sounds_prebattle.txt");
+	fnInsertion(Source_Soldier, Dest_Soldier, "export_descr_sounds_soldier_voice.txt");
+	fnInsertion(Source_Strat, Dest_Strat, "export_descr_sounds_stratmap_voice.txt");
+	fnInsertion(Source_Battle, Dest_Battle, "export_descr_sounds_units_battle_events.txt");
+}
+
 void Method(fs::path const& SourceData, fs::path const& DestData) noexcept
 {
-	auto const EDUPath = SourceData / L"export_descr_unit.txt";
-	auto const EDUFile = Units::Deserialize(EDUPath.u8string().c_str());
+	static constexpr array rgszUnits
+	{
+		"Pisan and Geonese sailors"sv,
+			"Maronites of Lebanon"sv,
+			"Armenians of Celicia"sv,
+			"Seljuk Auxiliary"sv,
+	};
 
-	auto AntiochRoaster = GetRoaster(EDUFile, "antioch");
-	auto JerusalemRoaster = GetRoaster(EDUFile, "jerusalem");
-
-	//CopyBattleModel(SourceData, DestData, "antioch");
-	CopyBattleModel(SourceData, DestData, "jerusalem");
-
-	//Gadget::Set<string_view> JoinedDictionaryEntries{};
-	//JoinedDictionaryEntries.insert_range(ToDictionaryNames(AntiochRoaster));
-	//JoinedDictionaryEntries.insert_range(ToDictionaryNames(JerusalemRoaster));
-
-	//CopyUnitStringsBin(SourceData, DestData, JoinedDictionaryEntries);
-
-	//{
-	//	using namespace UnitsVoice;
-
-	//	fs::path const SourceFile{ SourceData / L"export_descr_sounds_units_voice.txt" };
-	//	fs::path const DestFile{ DestData / L"export_descr_sounds_units_voice.txt" };
-
-	//	CUnitVoices SourceUnitVoice{ SourceFile };
-	//	CUnitVoices DestUnitVoice{ DestFile };
-
-	//	auto&& [itAntioch, bAntioch] = DestUnitVoice.m_Accents.try_emplace("Antioch", SourceUnitVoice.m_Accents.at("Antioch"));
-	//	auto&& [itJerusalem, bJerusalem] = DestUnitVoice.m_Accents.try_emplace("Jerusalem", SourceUnitVoice.m_Accents.at("Jerusalem"));
-
-	//	if (!bAntioch)
-	//		fmt::print(Gadget::Warning, "[Warning] Accent entry 'Antioch' already existed!\n");
-
-	//	if (!bJerusalem)
-	//		fmt::print(Gadget::Warning, "[Warning] Accent entry 'Jerusalem' already existed!\n");
-
-	//	DestUnitVoice.Save(DestFile);
-	//}
-
-	//CopyUnitUIFiles(SourceData, DestData, JoinedDictionaryEntries);
+	CopyUnitVoices(SourceData, DestData, rgszUnits);
 }

@@ -11,6 +11,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Modules\export_descr_sounds_units_battle_events.cpp" />
+    <ClCompile Include="Modules\export_descr_sounds.cpp" />
+    <ClCompile Include="Modules\export_descr_sounds_stratmap_voice.cpp" />
+    <ClCompile Include="Modules\export_descr_sounds_soldier_voice.cpp" />
+    <ClCompile Include="Modules\export_descr_sounds_prebattle.cpp" />
     <ClCompile Include="Gadget.cpp" />
     <ClCompile Include="Modules\battle_models.cpp" />
     <ClCompile Include="Modules\export_descr_unit.cpp" />
@@ -20,7 +25,12 @@
     <ClCompile Include="StringBin\StringsBin.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Modules\export_descr_sounds_units_battle_events.hpp" />
+    <ClInclude Include="Modules\export_descr_sounds.hpp" />
+    <ClInclude Include="Modules\export_descr_sounds_stratmap_voice.hpp" />
+    <ClInclude Include="Modules\export_descr_sounds_soldier_voice.hpp" />
     <ClInclude Include="Modules\battle_models.hpp" />
+    <ClInclude Include="Modules\export_descr_sounds_prebattle.hpp" />
     <ClInclude Include="Modules\export_descr_unit.hpp" />
     <ClInclude Include="Modules\export_descr_sounds_units_voice.hpp" />
     <ClInclude Include="String.hpp" />

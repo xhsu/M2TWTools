@@ -57,9 +57,17 @@ extern std::experimental::generator<std::string_view> UTIL_Split(std::string_vie
 extern std::string ToUTF8(std::wstring_view wsz) noexcept;
 extern std::wstring ToUTF16(std::string_view sz) noexcept;
 
+namespace Voice	// forward declaration for friend.
+{
+	struct CSimpleEvent;
+	struct CSimpleFolder;
+}
+
 class CBaseParser
 {
 	friend extern int main(int, char* []) noexcept;
+	friend Voice::CSimpleEvent;
+	friend Voice::CSimpleFolder;
 
 public:
 	CBaseParser() noexcept = default;
@@ -97,7 +105,7 @@ protected:
 	std::string_view Peek(uint32_t iCount) const noexcept;
 	inline auto Now() const noexcept { return *m_cur; }
 
-	bool Eof(void) const noexcept { return m_cur > cend() && cbegin() <= m_cur; }
+	bool Eof(void) const noexcept { return m_cur >= cend() && cbegin() < m_cur; }
 	void Seek(ptrdiff_t iOffset, int iMode = SEEK_CUR) noexcept;
 	auto Tell() const noexcept { return m_cur - m_p; }
 };

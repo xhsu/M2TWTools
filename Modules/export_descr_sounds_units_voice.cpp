@@ -6,9 +6,9 @@
 
 #include <fmt/color.h>
 
-using namespace UnitsVoice;
+using namespace Voice::Units;
 
-string UnitsVoice::CEvent::Serialize() const noexcept
+string Voice::Units::CEvent::Serialize() const noexcept
 {
 	string ret{};
 
@@ -37,7 +37,7 @@ string UnitsVoice::CEvent::Serialize() const noexcept
 	return ret;
 }
 
-string UnitsVoice::CVocal::Serialize() const noexcept
+string Voice::Units::CVocal::Serialize() const noexcept
 {
 	auto ret = fmt::format("\t\t\tvocal {} {}\n", m_Name, fmt::join(m_Arguments, " "));
 
@@ -47,7 +47,7 @@ string UnitsVoice::CVocal::Serialize() const noexcept
 	return ret;
 }
 
-string UnitsVoice::CClass::Serialize() const noexcept
+string Voice::Units::CClass::Serialize() const noexcept
 {
 	auto ret = fmt::format("\t\tclass {}\n", m_Name);
 
@@ -57,7 +57,7 @@ string UnitsVoice::CClass::Serialize() const noexcept
 	return ret;
 }
 
-string UnitsVoice::CAccent::Serialize() const noexcept
+string Voice::Units::CAccent::Serialize() const noexcept
 {
 	auto ret = fmt::format("\taccent {}\n", m_Name);
 
@@ -67,7 +67,7 @@ string UnitsVoice::CAccent::Serialize() const noexcept
 	return ret;
 }
 
-UnitsVoice::CUnitVoices::CUnitVoices(fs::path const& Path) noexcept
+Voice::Units::CUnitVoices::CUnitVoices(fs::path const& Path) noexcept
 {
 	if (auto f = _wfopen(Path.c_str(), L"rb"); f != nullptr)
 	{
@@ -84,7 +84,7 @@ UnitsVoice::CUnitVoices::CUnitVoices(fs::path const& Path) noexcept
 	}
 }
 
-UnitsVoice::CUnitVoices::~CUnitVoices() noexcept
+Voice::Units::CUnitVoices::~CUnitVoices() noexcept
 {
 	if (m_p)
 	{
@@ -95,7 +95,7 @@ UnitsVoice::CUnitVoices::~CUnitVoices() noexcept
 	}
 }
 
-void UnitsVoice::CUnitVoices::Deserialize() noexcept
+void Voice::Units::CUnitVoices::Deserialize() noexcept
 {
 	CAccent* m_ThisAccent{};
 	CClass* m_ThisClass{};
@@ -190,7 +190,7 @@ void UnitsVoice::CUnitVoices::Deserialize() noexcept
 	}
 }
 
-string UnitsVoice::CUnitVoices::Serialize() const noexcept
+string Voice::Units::CUnitVoices::Serialize() const noexcept
 {
 	string ret{ "BANK: unit_voice\n" };
 	ret.reserve(m_length);
@@ -201,7 +201,7 @@ string UnitsVoice::CUnitVoices::Serialize() const noexcept
 	return ret;
 }
 
-bool UnitsVoice::CUnitVoices::Save(fs::path const& Path) const noexcept
+bool Voice::Units::CUnitVoices::Save(fs::path const& Path) const noexcept
 {
 	if (auto f = _wfopen(Path.c_str(), L"wt"); f != nullptr)
 	{
@@ -214,7 +214,7 @@ bool UnitsVoice::CUnitVoices::Save(fs::path const& Path) const noexcept
 	return false;
 }
 
-CAccent* UnitsVoice::CUnitVoices::At(string_view szAccent) noexcept
+CAccent* Voice::Units::CUnitVoices::At(string_view szAccent) noexcept
 {
 	try
 	{
@@ -226,7 +226,7 @@ CAccent* UnitsVoice::CUnitVoices::At(string_view szAccent) noexcept
 	}
 }
 
-CClass* UnitsVoice::CUnitVoices::At(string_view szAccent, string_view szClass) noexcept
+CClass* Voice::Units::CUnitVoices::At(string_view szAccent, string_view szClass) noexcept
 {
 	try
 	{
@@ -238,7 +238,7 @@ CClass* UnitsVoice::CUnitVoices::At(string_view szAccent, string_view szClass) n
 	}
 }
 
-CVocal* UnitsVoice::CUnitVoices::At(string_view szAccent, string_view szClass, string_view szVocal) noexcept
+CVocal* Voice::Units::CUnitVoices::At(string_view szAccent, string_view szClass, string_view szVocal) noexcept
 {
 	try
 	{
@@ -250,7 +250,7 @@ CVocal* UnitsVoice::CUnitVoices::At(string_view szAccent, string_view szClass, s
 	}
 }
 
-generator<tuple<CAccent*, CClass*, CVocal*>> UnitsVoice::CUnitVoices::EveryVocalOf(string_view szVocal) noexcept
+generator<tuple<CAccent*, CClass*, CVocal*>> Voice::Units::CUnitVoices::EveryVocalOf(string_view szVocal) noexcept
 {
 	for (auto&& Accent : m_Accents | std::views::values)
 	{
@@ -267,7 +267,7 @@ generator<tuple<CAccent*, CClass*, CVocal*>> UnitsVoice::CUnitVoices::EveryVocal
 	co_return;
 }
 
-generator<tuple<CAccent*, CClass*, CVocal*, CEvent*>> UnitsVoice::CUnitVoices::EveryUnitOf(string_view szUnit) noexcept
+generator<tuple<CAccent*, CClass*, CVocal*, CEvent*>> Voice::Units::CUnitVoices::EveryUnitOf(string_view szUnit) noexcept
 {
 	for (auto&& Accent : m_Accents | std::views::values)
 	{
