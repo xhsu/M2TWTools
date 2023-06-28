@@ -1,5 +1,6 @@
 #include "String.hpp"
 
+#include <assert.h>
 #include <ctype.h>
 #include <string.h>
 #include <wctype.h>
@@ -139,6 +140,7 @@ CBaseParser::CBaseParser(std::filesystem::path const& Path) noexcept
 	}
 
 	m_cur = m_p;
+	m_legit_size = m_length;
 }
 
 CBaseParser::~CBaseParser() noexcept
@@ -149,6 +151,7 @@ CBaseParser::~CBaseParser() noexcept
 		m_p = nullptr;
 		m_cur = nullptr;
 		m_length = 0;
+		m_legit_size = 0;
 	}
 }
 
@@ -210,6 +213,51 @@ void CBaseParser::RewindUntilNonspace(void) noexcept
 	for (; it != crend() && (*it == '\0' || IsSpace(*it)); ++it) {}
 
 	m_cur = it.base();
+}
+
+void CBaseParser::DropComments() noexcept
+{
+	for (auto p = cbegin(); p < cend(); /* does nothing */)
+	{
+		if (*p == ';')
+		{
+			auto eol = p;
+			for (; eol < cend() && *eol != '\r' && *eol != '\n'; ++eol) {}
+
+			auto const len = eol - p;
+			assert(len >= 0 && m_length >= (size_t)len);
+
+			auto const tell = eol - cbegin();
+			assert(tell >= 0 && m_length >= (size_t)tell);
+
+			memmove(p, eol, m_length - tell);
+			m_length -= len;
+		}
+		else
+			++p;
+	}
+
+	// All previous pointers/iterators will be invalidated.
+	Seek(0, SEEK_SET);
+}
+
+void CBaseParser::FilterComment(std::string_view* const psv) noexcept
+{
+	[[unlikely]]
+	if (psv == nullptr)
+		return;
+
+	if (psv->front() == ';')
+	{
+		*psv = "";
+		return;
+	}
+
+	if (auto const pos = psv->find_first_of(';'); pos != psv->npos)
+	{
+		*psv = psv->substr(0, pos);
+		return;
+	}
 }
 
 std::string_view CBaseParser::Parse(std::string_view delimiters /*= " \n\t\f\v\r"*/, bool bLeftTrim /*= true*/, bool bRightTrim /*= true*/) noexcept

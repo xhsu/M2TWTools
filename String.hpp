@@ -92,12 +92,16 @@ public:
 protected:
 	char* m_p{};
 	size_t m_length{};
+	size_t m_legit_size{};
 	const char* m_cur{};
 
 	void Skip(int32_t iCount = 1) noexcept;
 	void SkipUntilNonspace(void) noexcept;
 	void Rewind(int32_t iCount = 1) noexcept;
 	void RewindUntilNonspace(void) noexcept;
+
+	void DropComments() noexcept;
+	static void FilterComment(std::string_view* const psv) noexcept;
 
 	std::string_view Parse(std::string_view delimiters = " \n\t\f\v\r", bool bLeftTrim = true, bool bRightTrim = true) noexcept;
 	std::string_view Parse(uint32_t iCount) noexcept;

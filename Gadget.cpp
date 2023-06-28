@@ -906,14 +906,14 @@ void PortSoundFiles(fs::path const& SourceData, fs::path const& DestData, string
 	{
 		if (!Source.m_Accents.contains(Faction))
 		{
-			fmt::print(fg(fmt::color::red), "[Error] Accent '{}' does not existed in the source file '{}'\n", Faction, FileName);
+			fmt::print(Gadget::Error, "[Error] Accent '{}' does not existed in the source file '{}'\n", Faction, FileName);
 			return false;
 		}
 
 		if (auto&& [it, bNewInsertion] = Dest.m_Accents.try_emplace(Faction, Source.m_Accents.at(Faction));
 			!bNewInsertion)
 		{
-			fmt::print(fg(fmt::color::golden_rod), "[Warning] Accent '{}' already existed in the dest file '{}'\n", Faction, FileName);
+			fmt::print(Gadget::Warning, "[Warning] Accent '{}' already existed in the dest file '{}'\n", Faction, FileName);
 			return false;
 		}
 
@@ -939,22 +939,63 @@ void EliminateFactionEntryOfBattleModel(fs::path const& Data, string_view Factio
 
 		if (Model.m_UnitTex.contains(Faction))
 		{
-			fmt::print(fg(fmt::color::light_slate_gray), "[Info] '{}' entry found in unit texture group of '{}'.\n", Faction, Model.m_szName);
+			fmt::print(Gadget::Progress, "[Info] '{}' entry found in unit texture group of '{}'.\n", Faction, Model.m_szName);
 			Model.m_UnitTex.erase(Faction);
 		}
 		if (Model.m_AttachmentTex.contains(Faction))
 		{
-			fmt::print(fg(fmt::color::light_slate_gray), "[Info] '{}' entry found in attachment texture group of '{}'.\n", Faction, Model.m_szName);
+			fmt::print(Gadget::Progress, "[Info] '{}' entry found in attachment texture group of '{}'.\n", Faction, Model.m_szName);
 			Model.m_AttachmentTex.erase(Faction);
 		}
 
 		if (Model.m_UnitTex.empty() && Model.m_AttachmentTex.empty())
 		{
-			fmt::print(fg(fmt::color::light_slate_gray), "[Info] '{}' becomes empty after removing '{}' entry.\n", Model.m_szName, Faction);
+			fmt::print(Gadget::Progress, "[Info] '{}' becomes empty after removing '{}' entry.\n", Model.m_szName, Faction);
 			it = f.m_rgBattleModels.erase(it);
 		}
 		else
 			++it;
+	}
+
+	f.Save(FilePath);
+}
+
+void CopyBattleModelFromFactionToAnother(fs::path const& Data, string_view SourceFaction, string_view DestFaction, string_view const* itModels, size_t len) noexcept
+{
+	using namespace BattleModels;
+
+	span const rgszModels{ itModels, len };
+
+	fs::path const FilePath = Data / L"unit_models" / L"battle_models.modeldb";
+	CFile f{ FilePath };
+
+	for (auto&& ModelName : rgszModels)
+	{
+		if (!f.m_rgBattleModels.contains(ModelName))
+		{
+			fmt::print(Gadget::Error, "[Error] Unit model '{}' no found.\n", ModelName);
+			return;
+		}
+
+		if (f.m_rgBattleModels.at(ModelName).m_UnitTex.contains(SourceFaction))
+		{
+			f.m_rgBattleModels.at(ModelName).m_UnitTex.try_emplace(
+				DestFaction,
+				f.m_rgBattleModels.at(ModelName).m_UnitTex.at(SourceFaction)
+			);
+		}
+		else
+			fmt::print(Gadget::Warning, "[Warning] Unit texture of '{}' no found.\n", SourceFaction);
+
+		if (f.m_rgBattleModels.at(ModelName).m_AttachmentTex.contains(SourceFaction))
+		{
+			f.m_rgBattleModels.at(ModelName).m_AttachmentTex.try_emplace(
+				DestFaction,
+				f.m_rgBattleModels.at(ModelName).m_AttachmentTex.at(SourceFaction)
+			);
+		}
+		else
+			fmt::print(Gadget::Warning, "[Warning] Attachment texture of '{}' no found.\n", SourceFaction);
 	}
 
 	f.Save(FilePath);
