@@ -7,9 +7,14 @@ namespace StringsBin
 	namespace fs = std::filesystem;
 
 	using std::experimental::generator;
+	using std::pair;
 	using std::tuple;
 
+	using std::wstring;
+
 	generator<tuple<char16_t const*, size_t, char16_t const*, size_t>> Deserialize(FILE* f) noexcept;
+	generator<pair<const wstring, wstring>> Deserialize(fs::path const& Path) noexcept;
+
 	void Serialize(fs::path const& out, std::ranges::input_range auto&& rgszTranslations) noexcept
 	{
 		static_assert(

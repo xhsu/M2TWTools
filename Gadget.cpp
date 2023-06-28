@@ -926,15 +926,36 @@ void PortSoundFiles(fs::path const& SourceData, fs::path const& DestData, string
 	fnInsertion(Source_Battle, Dest_Battle, "export_descr_sounds_units_battle_events.txt");
 }
 
-void Method(fs::path const& SourceData, fs::path const& DestData) noexcept
+void EliminateFactionEntryOfBattleModel(fs::path const& Data, string_view Faction) noexcept
 {
-	static constexpr array rgszUnits
-	{
-		"Pisan and Geonese sailors"sv,
-			"Maronites of Lebanon"sv,
-			"Armenians of Celicia"sv,
-			"Seljuk Auxiliary"sv,
-	};
+	using namespace BattleModels;
 
-	CopyUnitVoices(SourceData, DestData, rgszUnits);
+	fs::path const FilePath = Data / L"unit_models" / L"battle_models.modeldb";
+	CFile f{ FilePath };
+
+	for (auto it = f.m_rgBattleModels.begin(); it != f.m_rgBattleModels.end(); /* does nothing */)
+	{
+		auto&& [szEntry, Model] = *it;
+
+		if (Model.m_UnitTex.contains(Faction))
+		{
+			fmt::print(fg(fmt::color::light_slate_gray), "[Info] '{}' entry found in unit texture group of '{}'.\n", Faction, Model.m_szName);
+			Model.m_UnitTex.erase(Faction);
+		}
+		if (Model.m_AttachmentTex.contains(Faction))
+		{
+			fmt::print(fg(fmt::color::light_slate_gray), "[Info] '{}' entry found in attachment texture group of '{}'.\n", Faction, Model.m_szName);
+			Model.m_AttachmentTex.erase(Faction);
+		}
+
+		if (Model.m_UnitTex.empty() && Model.m_AttachmentTex.empty())
+		{
+			fmt::print(fg(fmt::color::light_slate_gray), "[Info] '{}' becomes empty after removing '{}' entry.\n", Model.m_szName, Faction);
+			it = f.m_rgBattleModels.erase(it);
+		}
+		else
+			++it;
+	}
+
+	f.Save(FilePath);
 }

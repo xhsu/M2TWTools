@@ -48,3 +48,21 @@ generator<tuple<char16_t const*, size_t, char16_t const*, size_t>> StringsBin::D
 
 	co_return;
 }
+
+generator<pair<const wstring, wstring>> StringsBin::Deserialize(fs::path const& Path) noexcept
+{
+	if (auto f = _wfopen(Path.c_str(), L"rb"); f != nullptr)
+	{
+		for (auto&& [pszKey, iKeyLength, pszValue, iValueLength] : Deserialize(f))
+		{
+			co_yield pair{
+				wstring{ reinterpret_cast<wchar_t const*>(pszKey), iKeyLength },
+				wstring{ reinterpret_cast<wchar_t const*>(pszValue), iValueLength },
+			};
+		}
+
+		fclose(f);
+	}
+
+	co_return;
+}
