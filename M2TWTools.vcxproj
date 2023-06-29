@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Modules\descr_mount.cpp" />
+    <ClCompile Include="Modules\export_descr_character_traits.cpp" />
     <ClCompile Include="Modules\export_descr_sounds_units_battle_events.cpp" />
     <ClCompile Include="Modules\export_descr_sounds.cpp" />
     <ClCompile Include="Modules\export_descr_sounds_stratmap_voice.cpp" />

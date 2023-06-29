@@ -333,9 +333,12 @@ string_view Mount::CFile::ModelOf(string_view szMountType) const noexcept
 	);
 }
 
-#define SERILIZE(x) ret += fmt::format("{0:<{2}}{1}\n", #x, m_##x, KEYWORD_WIDTH)
-#define SERILIZE_OPT(x) if (m_##x) ret += fmt::format("{0:<{2}}{1}\n", #x, *m_##x, KEYWORD_WIDTH)
-#define SERILIZE_ARR(x) ret += fmt::format("{0:<{2}}{1}\n", #x, fmt::join(m_##x, ", "), KEYWORD_WIDTH)
+//#define SERILIZE(x) ret += fmt::format("{0:<{2}}{1}\n", #x, m_##x, KEYWORD_WIDTH)
+//#define SERILIZE_OPT(x) if (m_##x) ret += fmt::format("{0:<{2}}{1}\n", #x, *m_##x, KEYWORD_WIDTH)
+//#define SERILIZE_ARR(x) ret += fmt::format("{0:<{2}}{1}\n", #x, fmt::join(m_##x, ", "), KEYWORD_WIDTH)
+#define SERILIZE(x) ret += fmt::format("{0}\t{1}\n", #x, m_##x)
+#define SERILIZE_OPT(x) if (m_##x) ret += fmt::format("{0}\t{1}\n", #x, *m_##x)
+#define SERILIZE_ARR(x) ret += fmt::format("{0}\t{1}\n", #x, fmt::join(m_##x, ", "))
 
 string Mount::CHorse::Serialize() const noexcept
 {

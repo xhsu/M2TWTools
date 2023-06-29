@@ -34,6 +34,9 @@
     <ClCompile Include="Modules\descr_mount.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
+    <ClCompile Include="Modules\export_descr_character_traits.cpp">
+      <Filter>Modules</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="String.hpp" />

@@ -7,6 +7,7 @@
 #include <ranges>
 
 #include "Modules/battle_models.hpp"
+#include "Modules/descr_mount.hpp"
 #include "Modules/export_descr_sounds_prebattle.hpp"
 #include "Modules/export_descr_sounds_soldier_voice.hpp"
 #include "Modules/export_descr_sounds_stratmap_voice.hpp"
@@ -512,6 +513,45 @@ inline Gadget::Set<string> FindModelEntriesOfUnits(Units::CFile const& DescrUnit
 	return ret;
 }
 
+inline Gadget::Set<string> FindMountsModelsOfUnits(fs::path const& Data, Units::CFile const& DescrUnits, RangeOfStr auto&& rgszUnits) noexcept
+{
+	Gadget::Set<string> Mounts{};
+	for (auto&& szUnit : rgszUnits)
+	{
+		auto const pUnit = std::ranges::find_if(DescrUnits,
+			[&](Units::CUnit const& unit) noexcept -> bool
+			{
+				return unit.at("type")[0] == szUnit;
+			}
+		);
+
+		if (pUnit == DescrUnits.end())
+		{
+			fmt::print(Gadget::Error, "[Error] Unit '{}' cannot be found in 'export_descr_unit.txt'.\n", szUnit);
+			continue;
+		}
+
+		if (pUnit->contains("mount"))
+			Mounts.emplace(fmt::format("{}", fmt::join(pUnit->at("mount"), " ")));
+	}
+
+	auto const MountPath = Data / L"descr_mount.txt";
+	Mount::CFile const MountFile{ MountPath };
+
+	Gadget::Set<string> ret{};
+	for (auto&& Mount : Mounts)
+	{
+		if (auto&& mdl = MountFile.ModelOf(Mount); !mdl.empty())
+		{
+			ret.emplace(
+				string{ mdl }
+			);
+		}
+	}
+
+	return ret;
+}
+
 inline void CopyUnitUIFiles(fs::path const& SourceData, fs::path const& DestData, RangeOfStr auto&& rgszUnitDictionaryEntries) noexcept
 {
 	set<fs::path> SourceFiles{};
@@ -611,7 +651,11 @@ void CopyUnitEssentialFiles(fs::path const& SourceData, fs::path const& DestData
 	if (rgszUnits.size() != rgszDictionaryEntries.size())
 		fmt::print(Gadget::Warning, "[Warning] Some entries from your input cannot be found in EDU!\n");
 
-	CopyBattleModel(SourceData, DestData, FindModelEntriesOfUnits(EDUFile, rgszUnits));
+	Gadget::Set<string> Models{};
+	Models.insert_range(FindModelEntriesOfUnits(EDUFile, rgszUnits));
+	Models.insert_range(FindMountsModelsOfUnits(SourceData, EDUFile, rgszUnits));
+
+	CopyBattleModel(SourceData, DestData, Models);
 	CopyUnitStringsBin(SourceData, DestData, rgszDictionaryEntries);
 	CopyUnitUIFiles(SourceData, DestData, rgszDictionaryEntries);
 	CopyUnitVoices(SourceData, DestData, rgszUnits);
