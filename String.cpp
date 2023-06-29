@@ -1,5 +1,7 @@
 #include "String.hpp"
 
+#include <fmt/core.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
@@ -215,7 +217,7 @@ void CBaseParser::RewindUntilNonspace(void) noexcept
 	m_cur = it.base();
 }
 
-void CBaseParser::DropComments() noexcept
+void CBaseParser::StripComments() noexcept
 {
 	for (auto p = cbegin(); p < cend(); /* does nothing */)
 	{
@@ -353,6 +355,18 @@ void CBaseParser::Seek(ptrdiff_t iOffset, int iMode /*= SEEK_CUR*/) noexcept
 	default:
 		break;
 	}
+}
+
+bool IBaseFile::Save(std::filesystem::path const& Path) const noexcept
+{
+	if (auto f = _wfopen(Path.c_str(), L"wt"); f)
+	{
+		fmt::print(f, "{}", Serialize());
+		fclose(f);
+		return true;
+	}
+
+	return false;
 }
 
 size_t CaseIgnoredHash::operator()(std::string_view const& sz) const noexcept

@@ -5,8 +5,9 @@
 //#include "Modules/export_descr_sounds_units_voice.hpp"
 //#include "Modules/battle_models.hpp"
 //#include "Modules/export_descr_unit.hpp"
+#include "Modules/descr_mount.hpp"
 
-#include "String.hpp"
+//#include "String.hpp"
 
 #include <assert.h>
 
@@ -71,7 +72,7 @@ struct export_descr_ancillaries final : public CBaseParser
 {
 	map<string_view, Ancillary_t, CaseIgnoredLess> m_Ancillaries{};
 
-	explicit export_descr_ancillaries(fs::path const& Path) noexcept : CBaseParser{ Path } { DropComments(); Deserialize(); }
+	explicit export_descr_ancillaries(fs::path const& Path) noexcept : CBaseParser{ Path } { StripComments(); Deserialize(); }
 
 	void Deserialize() noexcept
 	{
@@ -177,7 +178,7 @@ struct export_descr_character_traits final : public CBaseParser
 {
 	map<string_view, Trait_t, CaseIgnoredLess> m_Traits{};
 
-	explicit export_descr_character_traits(fs::path const& Path) noexcept : CBaseParser{ Path } { DropComments(); Deserialize(); }
+	explicit export_descr_character_traits(fs::path const& Path) noexcept : CBaseParser{ Path } { StripComments(); Deserialize(); }
 
 	void Deserialize() noexcept
 	{
@@ -258,20 +259,9 @@ void CompareTraits() noexcept
 
 int main(int, char* []) noexcept
 {
-	static constexpr auto rgsz = array{
-			"Dismounted_Norman_Knights"sv,
-			"Dismounted_Norman_Knights_ug1"sv,
-			"Norman_Knights"sv,
-			"Norman_Knights_ug1"sv,
-	};
+	Mount::CFile f{R"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data\descr_mount.txt)"};
 
-	CopyBattleModelFromFactionToAnother(
-		R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\mods\bare_geomod\data)",
-		"sicily",
-		"antioch",
-		rgsz.data(),
-		rgsz.size()
-	);
+	fmt::println("{}", f.ModelOf("Order Barded Horse"));
 
 	return EXIT_SUCCESS;
 }

@@ -31,6 +31,9 @@
     <ClCompile Include="Modules\export_descr_sounds_units_battle_events.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
+    <ClCompile Include="Modules\descr_mount.cpp">
+      <Filter>Modules</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="String.hpp" />
@@ -59,6 +62,9 @@
       <Filter>Modules</Filter>
     </ClInclude>
     <ClInclude Include="Modules\export_descr_sounds_units_battle_events.hpp">
+      <Filter>Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="Modules\descr_mount.hpp">
       <Filter>Modules</Filter>
     </ClInclude>
   </ItemGroup>

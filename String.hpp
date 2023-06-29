@@ -100,7 +100,7 @@ protected:
 	void Rewind(int32_t iCount = 1) noexcept;
 	void RewindUntilNonspace(void) noexcept;
 
-	void DropComments() noexcept;
+	void StripComments() noexcept;
 	static void FilterComment(std::string_view* const psv) noexcept;
 
 	std::string_view Parse(std::string_view delimiters = " \n\t\f\v\r", bool bLeftTrim = true, bool bRightTrim = true) noexcept;
@@ -112,6 +112,23 @@ protected:
 	bool Eof(void) const noexcept { return m_cur >= cend() && cbegin() < m_cur; }
 	void Seek(ptrdiff_t iOffset, int iMode = SEEK_CUR) noexcept;
 	auto Tell() const noexcept { return m_cur - m_p; }
+};
+
+class IBaseFile : public CBaseParser
+{
+public:
+	IBaseFile() noexcept = default;
+	explicit IBaseFile(std::filesystem::path const& Path) noexcept : CBaseParser{ Path }, m_Path{ Path } { StripComments(); }
+
+public:
+	virtual void Deserialize() noexcept = 0;	// #INVESTIGATE linker error here?
+	virtual std::string Serialize() const noexcept = 0;
+
+	virtual bool Save(std::filesystem::path const& Path) const noexcept;
+	inline bool Save() const noexcept { return Save(m_Path); }
+
+protected:
+	std::filesystem::path m_Path{};
 };
 
 struct CaseIgnoredHash final
