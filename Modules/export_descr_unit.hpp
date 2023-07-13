@@ -25,12 +25,6 @@ namespace Units
 	template <typename K, typename V>
 	using Dictionary = std::map<K, V, CaseIgnoredLess>;
 
-	using CUnit = map<string, vector<string>>;
-	using CFile = vector<CUnit>;
-
-	string Serialize(CUnit const& unit) noexcept;
-	CFile Deserialize(const char* file = "export_descr_unit.txt") noexcept;
-
 	// soldier
 	using CSoldier = tuple<string_view, int32_t, int32_t, float>;
 	inline string Serialize(CSoldier const& soldier, int16_t iIndent) noexcept { return fmt::format("{0:<{2}}{1}\n", "soldier"sv, fmt::join(soldier, ", "), iIndent); }

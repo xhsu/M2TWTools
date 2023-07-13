@@ -133,7 +133,7 @@ void ReadAllCommand(const char* pszPath = R"(C:\Users\xujia\Downloads\EBII_nonin
 	}
 }
 
-vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, string_view szFaction) noexcept
+vector<Units::unit_t_ver_2 const*> GetRoaster(Units::CEDU const& edu, string_view szFaction) noexcept
 {
 	using namespace Units;
 
@@ -165,24 +165,23 @@ vector<Units::CUnit const*> GetRoaster(Units::CFile const& edu, string_view szFa
 		{"venice"sv,		"southern_european"sv},
 	};
 
-	return edu
-		| std::views::filter([&](CUnit const& unit) noexcept { return std::ranges::contains(unit.at("ownership"), szFaction) || std::ranges::contains(unit.at("ownership"), CultureOf.at(szFaction)); })
+	return edu.m_Info
+		| std::views::values
+		| std::views::filter([&](unit_t_ver_2 const& unit) noexcept { return unit.m_ownership && (std::ranges::contains(*unit.m_ownership, szFaction) || std::ranges::contains(*unit.m_ownership, CultureOf.at(szFaction))); })
 //		| std::views::filter([&](CUnit const& unit) noexcept { return !std::ranges::contains(unit.at("attributes"), "mercenary_unit"); })
-		| std::views::transform([](CUnit const& unit) noexcept -> CUnit const* { return &unit; })
+		| std::views::transform([](unit_t_ver_2 const& unit) noexcept -> unit_t_ver_2 const* { return &unit; })
 		| std::ranges::to<vector>();
 }
 
-set<Units::CUnit const*> CrossRef(vector<Units::CUnit const*> const& lhs, vector<Units::CUnit const*> const& rhs) noexcept
+set<Units::unit_t_ver_2 const*> CrossRef(vector<Units::unit_t_ver_2 const*> const& lhs, vector<Units::unit_t_ver_2 const*> const& rhs) noexcept
 {
 	using namespace Units;
 
-	set<CUnit const*> ret{};
+	set<unit_t_ver_2 const*> ret{};
 
 	for (auto&& pUnit : lhs)
 	{
-		auto& szName = pUnit->at("type")[0];
-
-		if (std::ranges::find_if(rhs, [&](CUnit const* elem) noexcept { return elem->at("type")[0] == szName; }) == rhs.end())
+		if (std::ranges::find_if(rhs, [&](unit_t_ver_2 const* elem) noexcept { return elem->m_type == pUnit->m_type; }) == rhs.end())
 			ret.emplace(pUnit);
 	}
 
@@ -197,7 +196,7 @@ set<Units::CUnit const*> CrossRef(vector<Units::CUnit const*> const& lhs, vector
 	return ret;
 }
 
-set<Units::CUnit const*> CrossRef(Units::CFile const& lhs, Units::CFile const& rhs) noexcept
+set<Units::unit_t_ver_2 const*> CrossRef(Units::CEDU const& lhs, Units::CEDU const& rhs) noexcept
 {
 	using namespace Units;
 
@@ -211,41 +210,44 @@ set<Units::CUnit const*> CrossRef(Units::CFile const& lhs, Units::CFile const& r
 	//		ret.emplace(&unit);
 	//}
 
-	return lhs
-		| std::views::filter([&](CUnit const& elem) noexcept -> bool { return !std::ranges::contains(rhs, elem.at("type")[0], [](CUnit const& r_el) noexcept { return r_el.at("type")[0]; }); })
-		| std::views::transform([](CUnit const& elem) noexcept { return &elem; })
+	return lhs.m_Info
+		| std::views::values
+		| std::views::filter([&](unit_t_ver_2 const& elem) noexcept -> bool { return !std::ranges::contains(rhs.m_Info | std::views::values, elem.m_type, [](unit_t_ver_2 const& r_el) noexcept { return r_el.m_type; }); })
+		| std::views::transform([](unit_t_ver_2 const& elem) noexcept { return &elem; })
 		| std::ranges::to<set>();
 }
 
 void ListFactionUnitPriority(fs::path const& edu, string_view szFaction) noexcept
 {
-	auto const EDU = Units::Deserialize(edu.u8string().c_str());
+	auto const EDU = Units::CEDU{ edu };
 	auto const Roaster = GetRoaster(EDU, szFaction);
 
 	auto const iWidth = std::ranges::max(
 		Roaster
-		| std::views::transform([](auto&& unit) noexcept -> size_t { return unit->at("type").at(0).length(); })
+		| std::views::transform([](auto&& unit) noexcept -> size_t { return unit->m_type->length(); })
 	);
 
 	for (auto&& unit : Roaster)
 	{
-		fmt::println("unit:{0:*<{1}}{2}", unit->at("type").at(0), iWidth, unit->at("recruit_priority_offset").at(0));
+		if (unit->m_recruit_priority_offset)
+			fmt::println("unit:{0:*<{1}}{2}", unit->m_type, iWidth, unit->m_recruit_priority_offset);
 	}
 }
 
-vector<string_view> ToDictionaryNames(vector<Units::CUnit const*> const& Roaster) noexcept
+vector<string_view> ToDictionaryNames(vector<Units::unit_t_ver_2 const*> const& Roaster) noexcept
 {
 	return Roaster
-		| std::views::transform([](auto&& p) noexcept -> string_view { return string_view{ p->at("dictionary").front() }; })
+		| std::views::filter([](Units::unit_t_ver_2 const* unit) noexcept { return unit->m_dictionary.has_value(); })
+		| std::views::transform([](Units::unit_t_ver_2 const* unit) noexcept { return *unit->m_dictionary; })
 		| std::ranges::to<vector>();
 }
 
-set<string> ExtractFactions(set<Units::CUnit const*> const& Roaster) noexcept
+set<string_view> ExtractFactions(set<Units::unit_t_ver_2 const*> const& Roaster) noexcept
 {
-	set<string> ret{};
+	set<string_view> ret{};
 
 	for (auto&& pUnit : Roaster)
-		ret.insert_range(pUnit->at("ownership"));
+		ret.insert_range(*pUnit->m_ownership);
 
 	return ret;
 }
@@ -253,7 +255,6 @@ set<string> ExtractFactions(set<Units::CUnit const*> const& Roaster) noexcept
 set<string> AssembleUnitUIFiles(fs::path const& DataPath, string_view szDic) noexcept
 {
 	set<string> ret{};
-	auto const fnToLower = [](char c) noexcept -> char { return std::tolower(c); };
 
 	for (auto&& Entry : fs::recursive_directory_iterator(DataPath / "UI"))
 	{
@@ -261,8 +262,8 @@ set<string> AssembleUnitUIFiles(fs::path const& DataPath, string_view szDic) noe
 			Path.filename().u8string(),
 			szDic,
 			{},
-			fnToLower,
-			fnToLower
+			ToLower,
+			ToLower
 		))
 		{
 			ret.emplace(fs::relative(Path, DataPath).u8string());
@@ -487,69 +488,49 @@ inline void CopyUnitVoices(fs::path const& SourceData, fs::path const& DestData,
 	DestUnitVoice.Save(DestFile);
 }
 
-inline Gadget::Set<string> FindModelEntriesOfUnits(Units::CFile const& DescrUnits, RangeOfStr auto&& rgszUnits) noexcept
+inline Gadget::Set<string_view> FindModelEntriesOfUnits(Units::CEDU const& DescrUnits, RangeOfStr auto&& rgszUnits) noexcept
 {
-	Gadget::Set<string> ret{};
+	Gadget::Set<string_view> ret{};
 
 	for (auto&& szUnit : rgszUnits)
 	{
-		auto const pUnit = std::ranges::find_if(DescrUnits,
-			[&](Units::CUnit const& unit) noexcept -> bool
-			{
-				return unit.at("type")[0] == szUnit;
-			}
-		);
-
-		if (pUnit == DescrUnits.end())
+		if (!DescrUnits.m_Info.contains(szUnit))
 		{
 			fmt::print(Gadget::Error, "[Error] Unit '{}' cannot be found in 'export_descr_unit.txt'.\n", szUnit);
 			continue;
 		}
 
-		ret.emplace(pUnit->at("soldier").at(0));	// arg 0 of soldier script command: default model for this unit.
-		ret.insert_range(pUnit->at("armour_ug_models"));	// all models for its upgraded state.
+		auto const pUnit = &DescrUnits.m_Info.at(szUnit);
+
+		ret.emplace(std::get<0>(*pUnit->m_soldier));	// arg 0 of soldier script command: default model for this unit.
+		ret.insert_range(*pUnit->m_armour_ug_models);	// all models for its upgraded state.
 	}
 
 	return ret;
 }
 
-inline Gadget::Set<string> FindMountsModelsOfUnits(fs::path const& Data, Units::CFile const& DescrUnits, RangeOfStr auto&& rgszUnits) noexcept
+inline generator<string_view> FindMountsModelsOfUnits(Mount::CFile const& MountFile, Units::CEDU const& DescrUnits, RangeOfStr auto&& rgszUnits) noexcept
 {
-	Gadget::Set<string> Mounts{};
 	for (auto&& szUnit : rgszUnits)
 	{
-		auto const pUnit = std::ranges::find_if(DescrUnits,
-			[&](Units::CUnit const& unit) noexcept -> bool
-			{
-				return unit.at("type")[0] == szUnit;
-			}
-		);
-
-		if (pUnit == DescrUnits.end())
+		if (!DescrUnits.m_Info.contains(szUnit))
 		{
 			fmt::print(Gadget::Error, "[Error] Unit '{}' cannot be found in 'export_descr_unit.txt'.\n", szUnit);
 			continue;
 		}
 
-		if (pUnit->contains("mount"))
-			Mounts.emplace(fmt::format("{}", fmt::join(pUnit->at("mount"), " ")));
-	}
+		auto const pUnit = &DescrUnits.m_Info.at(szUnit);
 
-	auto const MountPath = Data / L"descr_mount.txt";
-	Mount::CFile const MountFile{ MountPath };
+		if (!pUnit->m_mount)
+			continue;
 
-	Gadget::Set<string> ret{};
-	for (auto&& Mount : Mounts)
-	{
-		if (auto&& mdl = MountFile.ModelOf(Mount); !mdl.empty())
+		if (auto&& mdl = MountFile.ModelOf(*pUnit->m_mount); !mdl.empty())
 		{
-			ret.emplace(
-				string{ mdl }
-			);
+			co_yield mdl;
 		}
+		else
+			fmt::print(Gadget::Error, "[Error] Mount '{}' cannot be found in 'descr_mount.txt'.\n", *pUnit->m_mount);
 	}
-
-	return ret;
 }
 
 inline void CopyUnitUIFiles(fs::path const& SourceData, fs::path const& DestData, RangeOfStr auto&& rgszUnitDictionaryEntries) noexcept
@@ -640,20 +621,22 @@ void CopyUnitEssentialFiles(fs::path const& SourceData, fs::path const& DestData
 	span rgszUnits{ itUnitNames, len };
 
 	auto const EDUPath = SourceData / L"export_descr_unit.txt";
-	auto const EDUFile = Units::Deserialize(EDUPath.u8string().c_str());
+	auto const EDUFile = Units::CEDU{ EDUPath };
+	auto const MountFile = Mount::CFile{ SourceData / L"descr_mount.txt" };
 
 	auto const rgszDictionaryEntries =
-		EDUFile
-		| std::views::filter([&](Units::CUnit const& unit) noexcept { return std::ranges::contains(rgszUnits, unit.at("type").at(0)); })
-		| std::views::transform([](Units::CUnit const& unit) noexcept -> string_view { return unit.at("dictionary").at(0); })
+		EDUFile.m_Info
+		| std::views::values
+		| std::views::filter([&](Units::unit_t_ver_2 const& unit) noexcept { return std::ranges::contains(rgszUnits, *unit.m_type); })
+		| std::views::transform([](Units::unit_t_ver_2 const& unit) noexcept -> string_view { return *unit.m_dictionary; })
 		| std::ranges::to<vector>();
 
 	if (rgszUnits.size() != rgszDictionaryEntries.size())
 		fmt::print(Gadget::Warning, "[Warning] Some entries from your input cannot be found in EDU!\n");
 
-	Gadget::Set<string> Models{};
+	Gadget::Set<string_view> Models{};
 	Models.insert_range(FindModelEntriesOfUnits(EDUFile, rgszUnits));
-	Models.insert_range(FindMountsModelsOfUnits(SourceData, EDUFile, rgszUnits));
+	Models.insert_range(FindMountsModelsOfUnits(MountFile, EDUFile, rgszUnits));
 
 	CopyBattleModel(SourceData, DestData, Models);
 	CopyUnitStringsBin(SourceData, DestData, rgszDictionaryEntries);
@@ -1043,4 +1026,20 @@ void CopyBattleModelFromFactionToAnother(fs::path const& Data, string_view Sourc
 	}
 
 	f.Save(FilePath);
+}
+
+void Method() noexcept
+{
+	array rgszUnits{ "Chivalric Knights"sv, "E Chivalric Knights"sv, "Dismounted Chivalric Knights"sv, "Dismounted E Chivalric Knights"sv };
+
+	auto const SourceData = fs::path{ LR"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data)" };
+	auto const EDUPath = SourceData / L"export_descr_unit.txt";
+	auto const EDUFile = Units::CEDU{ EDUPath };
+	auto const MountFile = Mount::CFile{ SourceData / L"descr_mount.txt" };
+
+	Gadget::Set<string_view> Models{};
+	Models.insert_range(FindModelEntriesOfUnits(EDUFile, rgszUnits));
+	Models.insert_range(FindMountsModelsOfUnits(MountFile, EDUFile, rgszUnits));
+
+	fmt::println("{}", Models);
 }

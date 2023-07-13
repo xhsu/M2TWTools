@@ -275,14 +275,14 @@ struct CCharacter final
 	static inline set<CCharacter*> Everybody{};
 };
 
-
+extern void Method() noexcept;
 int main(int, char* []) noexcept
 {
 	//DescrNames f(R"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data\descr_names.txt)");
-	auto edu = Units::CEDU{ R"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data\export_descr_unit.txt)" };
-	fmt::print("{}\n", edu.Serialize());
+	//auto edu = Units::CEDU{ R"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data\export_descr_unit.txt)" };
+	//fmt::print("{}\n", edu.Serialize());
 
-
+	Method();
 
 	return EXIT_SUCCESS;
 }
