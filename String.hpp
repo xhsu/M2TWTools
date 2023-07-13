@@ -1,5 +1,6 @@
 #pragma once
 
+#include <charconv>
 #include <experimental/generator>
 #include <filesystem>
 #include <string_view>
@@ -47,12 +48,34 @@ inline constexpr wchar_t ToWUpper(wchar_t const c) noexcept
 	return c;
 }
 
+template <typename T>
+T UTIL_StrToNum(std::string_view sz) noexcept
+{
+	if constexpr (std::is_enum_v<T>)
+	{
+		if (std::underlying_type_t<T> ret{}; std::from_chars(sz.data(), sz.data() + sz.size(), ret).ec == std::errc{})
+			return static_cast<T>(ret);
+	}
+	else
+	{
+		if (T ret{}; std::from_chars(sz.data(), sz.data() + sz.size(), ret).ec == std::errc{})
+			return ret;
+	}
+
+	return T{};
+}
+
 extern bool strieql(std::string_view lhs, std::string_view rhs) noexcept;
 extern bool wcsieql(std::wstring_view lhs, std::wstring_view rhs) noexcept;
 extern bool StartsWith_I(std::string_view text, std::string_view what) noexcept;
 extern bool StartsWith_I(std::wstring_view text, std::wstring_view what) noexcept;
 
 extern std::experimental::generator<std::string_view> UTIL_Split(std::string_view sz, std::string_view delimiters = ", \n\f\v\t\r", bool bLTrim = true) noexcept;
+extern void UTIL_Replace(std::string* str, std::string_view const from, std::string_view const to) noexcept;
+extern template int32_t UTIL_StrToNum<int32_t>(std::string_view) noexcept;
+extern template int16_t UTIL_StrToNum<int16_t>(std::string_view) noexcept;
+extern template float UTIL_StrToNum<float>(std::string_view) noexcept;
+
 
 extern std::string ToUTF8(std::wstring_view wsz) noexcept;
 extern std::wstring ToUTF16(std::string_view sz) noexcept;

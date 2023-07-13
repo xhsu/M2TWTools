@@ -87,6 +87,16 @@ generator<string_view> UTIL_Split(string_view sz, string_view delimiters, bool b
 	co_return;
 }
 
+void UTIL_Replace(string* str, string_view const from, string_view const to) noexcept
+{
+	size_t start_pos = 0;
+	while ((start_pos = str->find(from, start_pos)) != str->npos)
+	{
+		str->replace(start_pos, from.length(), to);
+		start_pos += to.length();	// In case 'to' contains 'from', like replacing 'x' with 'yx'
+	}
+}
+
 std::string ToUTF8(std::wstring_view wsz) noexcept
 {
 	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
@@ -272,6 +282,10 @@ std::string_view CBaseParser::Parse(std::string_view delimiters /*= " \n\t\f\v\r
 	if (bLeftTrim)
 		SkipUntilNonspace();
 
+	// Though there are some characters left, but all of which are illegal under current delimiters.
+	if (Eof())
+		return "";
+
 	auto const pos1 = m_cur;
 
 	// Find a pos after the pos1 that a delimiter shows up.
@@ -281,9 +295,9 @@ std::string_view CBaseParser::Parse(std::string_view delimiters /*= " \n\t\f\v\r
 
 	if (bRightTrim)
 	{
-		reverse_iterator it{ m_cur };
+		reverse_iterator it{ m_cur }, lim{ pos1 };
 
-		for (; it != crend() && IsSpace(*it); ++it) {}
+		for (; it < lim && IsSpace(*it); ++it) {}
 
 		return string_view{ pos1, it.base() };
 	}
@@ -311,6 +325,10 @@ std::string_view CBaseParser::Peek(std::string_view delimiters, bool bLeftTrim, 
 		&& (std::ranges::contains(delimiters, *pos1) || (bLeftTrim && IsSpace(*pos1)));
 		++pos1);
 
+	// Though there are some characters left, but all of which are illegal under current delimiters.
+	if (pos1 >= cend())
+		return "";
+
 	auto pos2 = pos1;
 
 	for (; pos2 < cend()
@@ -319,9 +337,9 @@ std::string_view CBaseParser::Peek(std::string_view delimiters, bool bLeftTrim, 
 
 	if (bRightTrim)
 	{
-		reverse_iterator it{ pos2 };
+		reverse_iterator it{ pos2 }, lim{ pos1 };
 
-		for (; it != crend() && IsSpace(*it); ++it);
+		for (; it < lim && IsSpace(*it); ++it);
 
 		return string_view{ pos1, it.base() };
 	}
@@ -422,3 +440,7 @@ bool CaseIgnoredLess::operator()(std::wstring_view const& lhs, std::wstring_view
 
 	return lhs.length() < rhs.length();
 }
+
+template int32_t UTIL_StrToNum<int32_t>(std::string_view) noexcept;
+template int16_t UTIL_StrToNum<int16_t>(std::string_view) noexcept;
+template float UTIL_StrToNum<float>(std::string_view) noexcept;

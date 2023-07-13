@@ -65,23 +65,6 @@ R"(;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 )";
 #pragma endregion File Introduction
 
-template <typename T>
-static inline auto UTIL_StrToNum(string_view sz) noexcept
-{
-	if constexpr (std::is_enum_v<T>)
-	{
-		if (std::underlying_type_t<T> ret{}; std::from_chars(sz.data(), sz.data() + sz.size(), ret).ec == std::errc{})
-			return static_cast<T>(ret);
-	}
-	else
-	{
-		if (T ret{}; std::from_chars(sz.data(), sz.data() + sz.size(), ret).ec == std::errc{})
-			return ret;
-	}
-
-	return T{};
-}
-
 #pragma region Elephent exclusive parser
 //#UPDATE_AT_CPP23 static operator()
 

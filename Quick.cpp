@@ -5,7 +5,9 @@
 //#include "Modules/export_descr_sounds_units_voice.hpp"
 //#include "Modules/battle_models.hpp"
 //#include "Modules/export_descr_unit.hpp"
-#include "Modules/descr_mount.hpp"
+//#include "Modules/descr_mount.hpp"
+#include "Modules/export_descr_unit.hpp"
+#include "String.hpp"
 
 //#include "String.hpp"
 
@@ -274,10 +276,13 @@ struct CCharacter final
 };
 
 
-
 int main(int, char* []) noexcept
 {
-	DescrNames f(R"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data\descr_names.txt)");
+	//DescrNames f(R"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data\descr_names.txt)");
+	auto edu = Units::CEDU{ R"(C:\Program Files (x86)\Steam\steamapps\common\Medieval II Total War\mods\MyMod\data\export_descr_unit.txt)" };
+	fmt::print("{}\n", edu.Serialize());
+
+
 
 	return EXIT_SUCCESS;
 }
