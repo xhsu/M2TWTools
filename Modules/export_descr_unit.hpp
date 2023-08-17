@@ -200,7 +200,7 @@ namespace Units
 		optional<vector<uint16_t>>			m_armour_ug_levels;
 		optional<vector<string_view>>		m_armour_ug_models;
 		optional<vector<string_view>>		m_ownership;
-		optional<array<vector<string_view>, 3>>	m_era{};	// #UPDATE_AT_CPP23 std::views::enumerate 17.7
+		optional<array<vector<string_view>, 3>>	m_era{};
 		optional<float>						m_recruit_priority_offset{};
 		optional<float>						m_move_speed_mod{};	// Although if you really want to have this value displayed, it should be 1.0f
 

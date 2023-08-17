@@ -504,17 +504,22 @@ void OperationWindowDisplay() noexcept
 
 		ImGui::SeparatorText("Culture");
 
-		// #UPDATE_AT_CPP23 views::enumerate
-		for (auto i = 0; i < (int32_t)UIFolder::CULTURE_COUNT; ++i)
+		for (auto&& [idx, szCulture, Folder, bExists] :
+			std::views::zip(
+				std::views::iota(0),
+				UIFolder::m_rgszCultures,
+				UIFolder::m_rgszOverrideFolders,
+				UIFolder::m_rgbOverrideExists)
+			)
 		{
-			ImGui::BeginDisabled(!UIFolder::m_rgbOverrideExists[i]);
+			ImGui::BeginDisabled(!bExists);
 
-			if (ImGui::RadioButton(UIFolder::m_rgszCultures[i].data(), &UIFolder::m_iSelected, i))
+			if (ImGui::RadioButton(szCulture.data(), &UIFolder::m_iSelected, idx))
 				g_rgImages = g_CurrentXml.Images(true);
 
-			if (!UIFolder::m_rgbOverrideExists[i] && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGui::SetTooltip("Culture override folder 'UI/%s/interface/' no found!", UIFolder::m_rgszCultures[i].data());
-			else if (UIFolder::m_rgbOverrideExists[i] && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && ImGui::BeginTooltip())
+			if (!bExists && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("Culture override folder 'UI/%s/interface/' no found!", szCulture.data());
+			else if (bExists && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && ImGui::BeginTooltip())
 			{
 				ImGui::TextUnformatted("Overriding:");
 
@@ -531,7 +536,7 @@ void OperationWindowDisplay() noexcept
 				};
 
 				std::ranges::for_each(
-					fs::directory_iterator(UIFolder::m_rgszOverrideFolders[i])
+					fs::directory_iterator(Folder)
 					| std::views::transform([](fs::directory_entry const& Entry) noexcept -> fs::path { return Entry; })
 					| std::views::filter([&](fs::path const& Path) noexcept { return fnContains(Stems, fs::_Parse_stem(Path.native())); })
 					| std::views::transform([](fs::path const& Path) noexcept -> string {  return fs::relative(Path, UIFolder::m_szUIFolder).u8string(); }),

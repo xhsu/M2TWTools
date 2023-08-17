@@ -294,10 +294,9 @@ void GameInterfaceFile_t::Export(tinyxml2::XMLDocument *xml) const noexcept
 		pTex->SetAttribute("force32bit", 0);	// #RESEARCH what is this?
 	}
 
-	// #UPDATE_AT_CPP23 try views::enumerate and to a map?
-	map<fs::path, int> Mapping{};
-	for (int i = 0; auto && Img : rgszImages)
-		Mapping[Img.m_Path] = i++;
+	auto const Mapping =
+		std::views::zip(rgszImages | std::views::transform(&Image_t::m_Path), std::views::iota(0))
+		| std::ranges::to<std::map>();
 
 	auto pSprites = pRoot->InsertNewChildElement("sprites");
 	pSprites->SetAttribute("count", m_rgSprites.size());

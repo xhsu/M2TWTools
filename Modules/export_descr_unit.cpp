@@ -387,15 +387,15 @@ string Units::unit_t_ver_2::Serialize() const noexcept
 
 	if (m_era)
 	{
-		for (int i = 0; i < 3; ++i)
+		for (auto&& [i, era] : std::views::enumerate(*m_era))
 		{
-			if (m_era->at(i).empty())
+			if (era.empty())
 				continue;
 
 			ret += fmt::format(
 				"{0:<{2}}{1}\n",
 				fmt::format("era {}", i),
-				fmt::join(m_era->at(i), ", "),
+				fmt::join(era, ", "),
 				iIndent
 			);
 		}
