@@ -32,37 +32,48 @@ Size=1280,696
 Collapsed=0
 
 [Window][GUI Pages]
-Pos=230,24
-Size=837,696
-Collapsed=0
-DockId=0x00000001,0
-
-[Window][Sprites]
-Pos=0,371
-Size=228,349
-Collapsed=0
-DockId=0x00000005,0
-
-[Window][Actions]
-Pos=1069,24
-Size=211,696
-Collapsed=0
-DockId=0x00000002,0
-
-[Window][Search Sprite...]
-Pos=0,24
-Size=228,345
+Pos=229,24
+Size=830,696
 Collapsed=0
 DockId=0x00000004,0
 
+[Window][Sprites]
+Pos=0,425
+Size=227,295
+Collapsed=0
+DockId=0x00000003,0
+
+[Window][Actions]
+Pos=1061,24
+Size=219,696
+Collapsed=0
+DockId=0x00000006,0
+
+[Window][Search Sprite...]
+Pos=0,24
+Size=227,399
+Collapsed=0
+DockId=0x00000002,0
+
+[Window][WindowOverViewport_11111111]
+Pos=0,24
+Size=1280,696
+Collapsed=0
+
+[Window][Debug##Default]
+Pos=60,60
+Size=400,400
+Collapsed=0
+
 [Docking][Data]
-DockSpace     ID=0x8B93E3BD Window=0xA787BDB4 Pos=258,327 Size=1280,696 Split=X
-  DockNode    ID=0x00000003 Parent=0x8B93E3BD SizeRef=228,696 Split=Y Selected=0x3B8DF718
-    DockNode  ID=0x00000004 Parent=0x00000003 SizeRef=228,345 HiddenTabBar=1 Selected=0x92AA6F5D
-    DockNode  ID=0x00000005 Parent=0x00000003 SizeRef=228,349 HiddenTabBar=1 Selected=0x3B8DF718
-  DockNode    ID=0x00000006 Parent=0x8B93E3BD SizeRef=1050,696 Split=X
-    DockNode  ID=0x00000001 Parent=0x00000006 SizeRef=837,696 CentralNode=1 HiddenTabBar=1 Selected=0xE7C1975D
-    DockNode  ID=0x00000002 Parent=0x00000006 SizeRef=211,696 HiddenTabBar=1 Selected=0x7D8AF184
+DockSpace       ID=0x08BD597D Window=0x1BBC0F80 Pos=190,237 Size=1280,696 Split=X
+  DockNode      ID=0x00000005 Parent=0x08BD597D SizeRef=1059,696 Split=X
+    DockNode    ID=0x00000001 Parent=0x00000005 SizeRef=227,696 Split=Y
+      DockNode  ID=0x00000002 Parent=0x00000001 SizeRef=228,399 HiddenTabBar=1 Selected=0xD2520472
+      DockNode  ID=0x00000003 Parent=0x00000001 SizeRef=228,295 HiddenTabBar=1 Selected=0xBA858C4F
+    DockNode    ID=0x00000004 Parent=0x00000005 SizeRef=830,696 CentralNode=1 HiddenTabBar=1 Selected=0xB0AD2B68
+  DockNode      ID=0x00000006 Parent=0x08BD597D SizeRef=219,696 HiddenTabBar=1 Selected=0x142E3D6D
+DockSpace       ID=0x8B93E3BD Pos=258,327 Size=1280,696 CentralNode=1 HiddenTabBar=1
 )""\0";
 
 // Main code

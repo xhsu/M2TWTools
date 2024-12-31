@@ -44,7 +44,7 @@ inline void Helper_SpritePreviewTooltip(Sprite_t const &spr) noexcept
 		auto const [uv0, uv1] = spr.UV();
 
 		ImGui::Image(
-			(void *)spr.m_Image.m_iTexture,
+			(ImTextureID)spr.m_Image.m_iTexture,
 			ImVec2{ (float)spr.m_Rect.Width(), (float)spr.m_Rect.Height() },
 			uv0, uv1
 		);
@@ -195,17 +195,12 @@ void AboutDialog(bool bShow) noexcept
 
 	if (ImGui::BeginPopupModal("About...", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::TextUnformatted("Version 1.2");
+		ImGui::TextUnformatted("Version 1.2.1");
 		ImGui::TextUnformatted("By: Hydrogenium, @" __DATE__);
-		ImGui::TextUnformatted("Website: https://github.com/xhsu/M2TWTools/releases");
+		ImGui::TextUnformatted("Website:");
 
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-		{
-			ImGui::SetTooltip("Right-click to copy the URL.");
-
-			if (ImGui::IsKeyPressed(ImGuiKey_MouseRight))
-				ImGui::SetClipboardText("https://github.com/xhsu/M2TWTools/releases");
-		}
+		ImGui::SameLine();
+		ImGui::TextLinkOpenURL("https://github.com/xhsu/M2TWTools/releases");
 
 		ImGui::NewLine();
 
@@ -336,7 +331,7 @@ and the "last modified" attribute of .xml is NEWER than its .sd counterpart.)"
 		ImGui::EndMainMenuBar();
 	}
 
-	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_AutoHideTabBar);
+	ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_AutoHideTabBar);
 
 	AddSpriteDialog(bAddSpr);
 	AboutDialog(bShowAbout);
@@ -368,7 +363,7 @@ void ImageWindowDisplay() noexcept
 				vecContentRegionAvail = ImGui::GetContentRegionAvail();
 
 				ImGui::Image(
-					(void *)(intptr_t)g_iFrameTexture,
+					(ImTextureID)(intptr_t)g_iFrameTexture,
 					ImVec2((float)CANVAS_WIDTH, (float)CANVAS_HEIGHT),
 					g_vecImgOrigin, g_vecImgOrigin + ImVec2{ g_flScope, g_flScope }
 				);
@@ -574,7 +569,7 @@ void SpriteWindowDisplay() noexcept
 
 				auto const& flSpacing = ImGui::GetStyle().ItemInnerSpacing.x;
 				auto const fl = ImGui::GetFrameHeight();	// copy from ArrowButtonEx
-				ImGui::PushButtonRepeat(true);
+				ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 				ImGui::InvisibleButton("placeholder1", ImVec2{ fl, fl }); ImGui::SameLine(0.0f, flSpacing);
 				if (ImGui::ArrowButton("##up", ImGuiDir_Up) && pSpr->m_Rect.m_top > 0)
 				{
@@ -605,7 +600,7 @@ void SpriteWindowDisplay() noexcept
 					pSpr->m_Rect.m_top = std::clamp(pSpr->m_Rect.m_top + 1, 0, pSpr->m_Image.m_iHeight);
 					pSpr->m_Rect.m_bottom = std::clamp(pSpr->m_Rect.m_bottom + 1, 0, pSpr->m_Image.m_iHeight);
 				}
-				ImGui::PopButtonRepeat();
+				ImGui::PopItemFlag();	// ImGui::PopButtonRepeat();
 
 				if (ImGui::InputInt("Left", &pSpr->m_Rect.m_left))
 					pSpr->m_Rect.m_left = std::clamp(pSpr->m_Rect.m_left, 0, pSpr->m_Rect.m_right);
