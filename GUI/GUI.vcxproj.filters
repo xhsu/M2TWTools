@@ -50,6 +50,7 @@
     </ClCompile>
     <ClCompile Include="Preview.cpp" />
     <ClCompile Include="..\String.cpp" />
+    <ClCompile Include="Platform.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ImGui">

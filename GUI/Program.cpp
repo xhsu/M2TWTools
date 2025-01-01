@@ -24,6 +24,8 @@ extern void OperationWindowDisplay() noexcept;
 extern void SpriteWindowDisplay() noexcept;
 extern void SearchSpriteWindowDisplay() noexcept;
 
+extern void disableTitlebar(GLFWwindow* window) noexcept;
+
 inline constexpr char g_Ini[] =
 R"(
 [Window][DockSpaceViewport_11111111]
@@ -85,21 +87,27 @@ int main(int argc, char *argv[]) noexcept
 
 	// Decide GL+GLSL versions
 #if defined(IMGUI_IMPL_OPENGL_ES2)
-	// GL ES 2.0 + GLSL 100
-	const char *glsl_version = "#version 100";
+	// GL ES 2.0 + GLSL 100 (WebGL 1.0)
+	const char* glsl_version = "#version 100";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+#elif defined(IMGUI_IMPL_OPENGL_ES3)
+	// GL ES 3.0 + GLSL 300 es (WebGL 2.0)
+	const char* glsl_version = "#version 300 es";
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
 #elif defined(__APPLE__)
 	// GL 3.2 + GLSL 150
-	const char *glsl_version = "#version 150";
+	const char* glsl_version = "#version 150";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #else
 	// GL 3.0 + GLSL 130
-	const char *glsl_version = "#version 130";
+	static constexpr char glsl_version[] = "#version 130";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
@@ -123,13 +131,13 @@ int main(int argc, char *argv[]) noexcept
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;		// Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;		// Enable Gamepad Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;			// Enable Docking
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 	//io.ConfigViewportsNoAutoMerge = true;
-	//io.ConfigViewportsNoTaskBarIcon = true;
+	io.ConfigViewportsNoTaskBarIcon = true;
 	io.ConfigWindowsMoveFromTitleBarOnly = true;				// We need to drag images.
 
 	// No annoying imgui.ini
@@ -150,6 +158,9 @@ int main(int argc, char *argv[]) noexcept
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
+#ifdef __EMSCRIPTEN__
+	ImGui_ImplGlfw_InstallEmscriptenCallbacks(window, "#canvas");
+#endif
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	// my init
@@ -173,6 +184,7 @@ int main(int argc, char *argv[]) noexcept
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
 	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != nullptr);
+
 	// Font settings
 	ImFontConfig fontConfig; fontConfig.MergeMode = true;
 	io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\SegoeUI.ttf)", 18.0f, nullptr, io.Fonts->GetGlyphRangesDefault());
@@ -180,7 +192,6 @@ int main(int argc, char *argv[]) noexcept
 	io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\KaiU.ttf)", 18.0f, &fontConfig, io.Fonts->GetGlyphRangesChineseFull());
 
 	// Our state
-	bool show_demo_window = false;
 	static constexpr ImVec4 clear_color{ 0.45f, 0.55f, 0.60f, 1.00f };
 
 	// Main loop
@@ -199,6 +210,11 @@ int main(int argc, char *argv[]) noexcept
 		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
 		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 		glfwPollEvents();
+		if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
+		{
+			ImGui_ImplGlfw_Sleep(10);
+			continue;
+		}
 
 		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
@@ -227,7 +243,7 @@ int main(int argc, char *argv[]) noexcept
 		//  For this specific demo app we could also call glfwMakeContextCurrent(window) directly)
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
-			GLFWwindow *backup_current_context = glfwGetCurrentContext();
+			GLFWwindow* backup_current_context = glfwGetCurrentContext();
 			ImGui::UpdatePlatformWindows();
 			ImGui::RenderPlatformWindowsDefault();
 			glfwMakeContextCurrent(backup_current_context);
