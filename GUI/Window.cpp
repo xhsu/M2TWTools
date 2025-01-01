@@ -349,11 +349,11 @@ void ImageWindowDisplay() noexcept
 		for (auto &&Img : g_rgImages)
 		{
 			auto const bitsFlags =
-				(!g_ImageFileJmp.empty() && Img.m_Path.native() == g_ImageFileJmp) ?
+				(!g_ImageFileForcedJmp.empty() && Img.m_Path.native() == g_ImageFileForcedJmp) ?
 				ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
 
-			if (bitsFlags & ImGuiTabItemFlags_SetSelected &&!g_ImageFileJmp.empty())
-				g_ImageFileJmp.clear();
+			if (bitsFlags & ImGuiTabItemFlags_SetSelected &&!g_ImageFileForcedJmp.empty())
+				g_ImageFileForcedJmp.clear();
 
 			if (ImGui::BeginTabItem(Img.Name().c_str(), nullptr, bitsFlags))
 			{
@@ -462,7 +462,7 @@ void OperationWindowDisplay() noexcept
 		for (auto &&sz :
 			g_CurrentXml.m_rgSprites
 			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return spr.m_Rect.IsPointIn(Canvas::m_vecCursorPos); })
-			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && spr.m_Image.m_Path == g_pActivatedImage->m_Path; })
+			| std::views::filter([](Sprite_t const &spr) noexcept -> bool { return g_pActivatedImage && UIFolder::Equivalent(spr.m_Image, *g_pActivatedImage);; })
 			| std::views::transform([](Sprite_t const &spr) noexcept -> string const &{ return spr.m_Name; })
 			)
 		{
@@ -510,7 +510,12 @@ void OperationWindowDisplay() noexcept
 			ImGui::BeginDisabled(!bExists);
 
 			if (ImGui::RadioButton(szCulture.data(), &UIFolder::m_iSelected, idx))
+			{
 				g_rgImages = g_CurrentXml.Images(true);
+
+				g_pActivatedImage = nullptr;
+				Canvas::m_SelectedSprites.clear();	// weak_ptr equivalent.
+			}
 
 			if (!bExists && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 				ImGui::SetTooltip("Culture override folder 'UI/%s/interface/' no found!", szCulture.data());
@@ -559,7 +564,9 @@ void SpriteWindowDisplay() noexcept
 		for (auto it = Canvas::m_SelectedSprites.begin(); it != Canvas::m_SelectedSprites.end(); /* Does nothing*/)
 		{
 			auto &pSpr = *it;
-			bool bAllowedToExist = pSpr->m_Image == *g_pActivatedImage;
+
+			// Comparing by filename, for the sake of culture texture substitution.
+			bool bAllowedToExist = UIFolder::Equivalent(pSpr->m_Image, *g_pActivatedImage);
 
 			if (ImGui::CollapsingHeader(pSpr->m_Name.c_str(), &bAllowedToExist, ImGuiTreeNodeFlags_DefaultOpen))
 			{
@@ -716,7 +723,7 @@ void SearchSpriteWindowDisplay() noexcept
 				else
 					std::erase(Canvas::m_SelectedSprites, &spr);
 
-				g_ImageFileJmp = spr.m_Image.m_Path.native();
+				g_ImageFileForcedJmp = spr.m_Image.m_Path.native();
 			}
 
 			Helper_SpritePreviewTooltip(spr);

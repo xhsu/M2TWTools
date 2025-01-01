@@ -86,8 +86,8 @@ struct GameInterfaceFile_t final
 
 	// Methods
 
-	std::set<Image_t> Images(bool bUseCultureOverride) const noexcept;
-	std::set<std::wstring_view> ReferencedFileStems() const noexcept;
+	auto Images(bool bUseCultureOverride) const noexcept -> std::set<Image_t, std::less<>>;
+	auto ReferencedFileStems() const noexcept -> std::set<std::wstring_view, std::less<>>;
 
 	std::string Decompile(std::filesystem::path const& Path) noexcept;
 	void Import(std::filesystem::path const &Path) noexcept;
@@ -133,4 +133,7 @@ namespace UIFolder
 	inline int32_t m_iSelected = southern_european;
 
 	void Update(fs::path const& UIFolder) noexcept;
+
+	// Some files gets override by cultural UI. Only comparing filename in these cases.
+	bool Equivalent(Image_t const& lhs, Image_t const& rhs) noexcept;
 }

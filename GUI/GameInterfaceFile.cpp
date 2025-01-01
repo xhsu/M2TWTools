@@ -25,7 +25,7 @@ using std::wstring_view;
 template <typename T>
 inline T g_Dummy{};
 
-set<Image_t> GameInterfaceFile_t::Images(bool bUseCultureOverride) const noexcept
+set<Image_t, std::less<>> GameInterfaceFile_t::Images(bool bUseCultureOverride) const noexcept
 {
 	static constexpr auto fnGetImage = [](Sprite_t const& spr) noexcept -> Image_t { return spr.m_Image; };
 	static constexpr auto fnFindOverride = [](Sprite_t const& spr) noexcept -> Image_t
@@ -45,14 +45,14 @@ set<Image_t> GameInterfaceFile_t::Images(bool bUseCultureOverride) const noexcep
 	return
 		m_rgSprites
 		| std::views::transform(bUseCultureOverride ? fnFindOverride : fnGetImage)
-		| std::ranges::to<set>();
+		| std::ranges::to<set<Image_t, std::less<>>>();
 }
 
-set<wstring_view> GameInterfaceFile_t::ReferencedFileStems() const noexcept
+set<wstring_view, std::less<>> GameInterfaceFile_t::ReferencedFileStems() const noexcept
 {
 	return m_rgSprites
-		| std::views::transform([](Sprite_t const& spr) noexcept -> std::wstring_view { return fs::_Parse_stem(spr.m_Image.m_Path.native()); })
-		| std::ranges::to<set>();
+		| std::views::transform([](Sprite_t const& spr) noexcept -> wstring_view { return fs::_Parse_stem(spr.m_Image.m_Path.native()); })
+		| std::ranges::to<set<wstring_view, std::less<>>>();
 }
 
 string GameInterfaceFile_t::Decompile(fs::path const& Path) noexcept
@@ -329,4 +329,9 @@ void UIFolder::Update(fs::path const& UIFolder) noexcept
 	}
 
 	m_iSelected = southern_european;	// reset to default - maybe we should use file search?
+}
+
+bool UIFolder::Equivalent(Image_t const& lhs, Image_t const& rhs) noexcept
+{
+	return fs::_Parse_filename(lhs.m_Path.c_str()) == fs::_Parse_filename(rhs.m_Path.c_str());
 }

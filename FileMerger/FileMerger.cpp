@@ -28,7 +28,7 @@ static inline generator<string_view> Split(string_view sz, string_view delimiter
 	co_return;
 }
 
-set<string> Conclude(const char* file) noexcept
+static auto Conclude(const char* file) noexcept -> set<string, std::less<string_view>>
 {
 	if (auto f = fopen(file, "rb"); f)
 	{
@@ -44,7 +44,7 @@ set<string> Conclude(const char* file) noexcept
 		auto const rgsz =
 			Split({ p, (size_t)len }, "\r\n")
 			| std::views::transform([](string_view const& sz) noexcept { return (string)sz; })
-			| std::ranges::to<set>();
+			| std::ranges::to<set<string, std::less<string_view>>>();
 
 		free(p);
 
@@ -75,7 +75,7 @@ int main(int, char* []) noexcept
 
 	fmt::print("{}\n", fmt::join(diff, "\n"));
 
-	set<string> un{};
+	set<string, std::less<>> un{};
 	std::ranges::set_union(van_sk, crus_sk, std::inserter(un, un.begin()));
 	Save(R"(D:\SteamLibrary\steamapps\common\Medieval II Total War\mods\bare_geomod\data\animations\SK_PACK\list.txt)", un);
 

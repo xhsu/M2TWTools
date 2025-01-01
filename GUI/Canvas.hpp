@@ -21,7 +21,7 @@ namespace Canvas
 	inline ImVec2 m_vecCursorPos{};
 	inline bool m_ShouldDrawGizmos{ true };
 	inline std::vector<rect_t> m_Gizmos{};
-	inline std::vector<Sprite_t *> m_SelectedSprites{};	// NOT OWNING
+	inline std::vector<Sprite_t *> m_SelectedSprites{};	// NOT OWNING. Should clear when g_rgImages alters.
 
 	void Resize(int iWidth, int iHeight) noexcept;
 	void Update() noexcept;
